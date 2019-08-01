@@ -107,6 +107,7 @@ public class MutablePropertySources implements PropertySources {
 	}
 
 	/**
+	 * 添加一个 propertySource 到指定的 relativePropertySourceName 前面
 	 * Add the given property source object with precedence immediately higher
 	 * than the named relative property source.
 	 */
