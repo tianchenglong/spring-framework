@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,18 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link ProfileValueUtils}.
+ * Tests for {@link ProfileValueUtils}.
  *
  * @author Sam Brannen
  * @since 3.0
  */
-public class ProfileValueUtilsTests {
+class ProfileValueUtilsTests {
 
 	private static final String NON_ANNOTATED_METHOD = "nonAnnotatedMethod";
 	private static final String ENABLED_ANNOTATED_METHOD = "enabledAnnotatedMethod";
@@ -41,16 +41,16 @@ public class ProfileValueUtilsTests {
 	private static final String VALUE = "enigma";
 
 
-	@BeforeClass
-	public static void setProfileValue() {
+	@BeforeAll
+	static void setProfileValue() {
 		System.setProperty(NAME, VALUE);
 	}
 
-	private void assertClassIsEnabled(Class<?> testClass) throws Exception {
+	private void assertClassIsEnabled(Class<?> testClass) {
 		assertThat(ProfileValueUtils.isTestEnabledInThisEnvironment(testClass)).as("Test class [" + testClass + "] should be enabled.").isTrue();
 	}
 
-	private void assertClassIsDisabled(Class<?> testClass) throws Exception {
+	private void assertClassIsDisabled(Class<?> testClass) {
 		assertThat(ProfileValueUtils.isTestEnabledInThisEnvironment(testClass)).as("Test class [" + testClass + "] should be disabled.").isFalse();
 	}
 
@@ -81,7 +81,7 @@ public class ProfileValueUtilsTests {
 	// -------------------------------------------------------------------
 
 	@Test
-	public void isTestEnabledInThisEnvironmentForProvidedClass() throws Exception {
+	void isTestEnabledInThisEnvironmentForProvidedClass() {
 		assertClassIsEnabled(NonAnnotated.class);
 		assertClassIsEnabled(EnabledAnnotatedSingleValue.class);
 		assertClassIsEnabled(EnabledAnnotatedMultiValue.class);
@@ -97,7 +97,7 @@ public class ProfileValueUtilsTests {
 	}
 
 	@Test
-	public void isTestEnabledInThisEnvironmentForProvidedMethodAndClass() throws Exception {
+	void isTestEnabledInThisEnvironmentForProvidedMethodAndClass() throws Exception {
 		assertMethodIsEnabled(NON_ANNOTATED_METHOD, NonAnnotated.class);
 
 		assertMethodIsEnabled(NON_ANNOTATED_METHOD, EnabledAnnotatedSingleValue.class);
@@ -129,7 +129,7 @@ public class ProfileValueUtilsTests {
 	}
 
 	@Test
-	public void isTestEnabledInThisEnvironmentForProvidedProfileValueSourceMethodAndClass() throws Exception {
+	void isTestEnabledInThisEnvironmentForProvidedProfileValueSourceMethodAndClass() throws Exception {
 
 		ProfileValueSource profileValueSource = SystemProfileValueSource.getInstance();
 
@@ -239,12 +239,12 @@ public class ProfileValueUtilsTests {
 
 	@IfProfileValue(name = NAME, value = VALUE)
 	@Retention(RetentionPolicy.RUNTIME)
-	private static @interface MetaEnabled {
+	private @interface MetaEnabled {
 	}
 
 	@IfProfileValue(name = NAME, value = VALUE + "X")
 	@Retention(RetentionPolicy.RUNTIME)
-	private static @interface MetaDisabled {
+	private @interface MetaDisabled {
 	}
 
 	@MetaEnabled
@@ -298,13 +298,13 @@ public class ProfileValueUtilsTests {
 	@ProfileValueSourceConfiguration(HardCodedProfileValueSource.class)
 	@IfProfileValue(name = NAME, value = "42")
 	@Retention(RetentionPolicy.RUNTIME)
-	private static @interface MetaEnabledWithCustomProfileValueSource {
+	private @interface MetaEnabledWithCustomProfileValueSource {
 	}
 
 	@ProfileValueSourceConfiguration(HardCodedProfileValueSource.class)
 	@IfProfileValue(name = NAME, value = "13")
 	@Retention(RetentionPolicy.RUNTIME)
-	private static @interface MetaDisabledWithCustomProfileValueSource {
+	private @interface MetaDisabledWithCustomProfileValueSource {
 	}
 
 	@MetaEnabledWithCustomProfileValueSource

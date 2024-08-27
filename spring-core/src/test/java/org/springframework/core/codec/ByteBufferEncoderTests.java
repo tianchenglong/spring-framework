@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ package org.springframework.core.codec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.core.testfixture.codec.AbstractEncoderTests;
 import org.springframework.util.MimeTypeUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,19 +31,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Sebastien Deleuze
  */
-public class ByteBufferEncoderTests extends AbstractEncoderTestCase<ByteBufferEncoder> {
+class ByteBufferEncoderTests extends AbstractEncoderTests<ByteBufferEncoder> {
 
 	private final byte[] fooBytes = "foo".getBytes(StandardCharsets.UTF_8);
 
 	private final byte[] barBytes = "bar".getBytes(StandardCharsets.UTF_8);
 
-	public ByteBufferEncoderTests() {
+	ByteBufferEncoderTests() {
 		super(new ByteBufferEncoder());
 	}
 
 	@Override
 	@Test
-	public void canEncode() {
+	protected void canEncode() {
 		assertThat(this.encoder.canEncode(ResolvableType.forClass(ByteBuffer.class),
 				MimeTypeUtils.TEXT_PLAIN)).isTrue();
 		assertThat(this.encoder.canEncode(ResolvableType.forClass(Integer.class),
@@ -56,7 +57,7 @@ public class ByteBufferEncoderTests extends AbstractEncoderTestCase<ByteBufferEn
 
 	@Override
 	@Test
-	public void encode() {
+	protected void encode() {
 		Flux<ByteBuffer> input = Flux.just(this.fooBytes, this.barBytes)
 				.map(ByteBuffer::wrap);
 
@@ -64,7 +65,6 @@ public class ByteBufferEncoderTests extends AbstractEncoderTestCase<ByteBufferEn
 				.consumeNextWith(expectBytes(this.fooBytes))
 				.consumeNextWith(expectBytes(this.barBytes))
 				.verifyComplete());
-
-
 	}
+
 }

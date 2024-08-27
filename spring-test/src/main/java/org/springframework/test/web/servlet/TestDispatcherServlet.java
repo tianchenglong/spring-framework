@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ package org.springframework.test.web.servlet;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.lang.Nullable;
 import org.springframework.mock.web.MockAsyncContext;
@@ -40,7 +41,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.util.WebUtils;
 
 /**
- * A sub-class of {@code DispatcherServlet} that saves the result in an
+ * A subclass of {@code DispatcherServlet} that saves the result in an
  * {@link MvcResult}. The {@code MvcResult} instance is expected to be available
  * as the request attribute {@link MockMvc#MVC_RESULT_ATTRIBUTE}.
  *
@@ -72,15 +73,16 @@ final class TestDispatcherServlet extends DispatcherServlet {
 
 		if (request.getAsyncContext() != null) {
 			MockAsyncContext asyncContext;
-			if (request.getAsyncContext() instanceof MockAsyncContext) {
-				asyncContext = (MockAsyncContext) request.getAsyncContext();
+			if (request.getAsyncContext() instanceof MockAsyncContext mockAsyncContext) {
+				asyncContext = mockAsyncContext;
 			}
 			else {
 				MockHttpServletRequest mockRequest = WebUtils.getNativeRequest(request, MockHttpServletRequest.class);
 				Assert.notNull(mockRequest, "Expected MockHttpServletRequest");
 				asyncContext = (MockAsyncContext) mockRequest.getAsyncContext();
+				String requestClassName = request.getClass().getName();
 				Assert.notNull(asyncContext, () ->
-						"Outer request wrapper " + request.getClass().getName() + " has an AsyncContext," +
+						"Outer request wrapper " + requestClassName + " has an AsyncContext," +
 								"but it is not a MockAsyncContext, while the nested " +
 								mockRequest.getClass().getName() + " does not have an AsyncContext at all.");
 			}
@@ -91,12 +93,12 @@ final class TestDispatcherServlet extends DispatcherServlet {
 		}
 	}
 
-	private void registerAsyncResultInterceptors(final HttpServletRequest request) {
+	private void registerAsyncResultInterceptors(HttpServletRequest request) {
 
 		WebAsyncUtils.getAsyncManager(request).registerCallableInterceptor(KEY,
 				new CallableProcessingInterceptor() {
 					@Override
-					public <T> void postProcess(NativeWebRequest r, Callable<T> task, Object value) {
+					public <T> void postProcess(NativeWebRequest r, Callable<T> task, @Nullable Object value) {
 						// We got the result, must also wait for the dispatch
 						getMvcResult(request).setAsyncResult(value);
 					}
@@ -105,7 +107,7 @@ final class TestDispatcherServlet extends DispatcherServlet {
 		WebAsyncUtils.getAsyncManager(request).registerDeferredResultInterceptor(KEY,
 				new DeferredResultProcessingInterceptor() {
 					@Override
-					public <T> void postProcess(NativeWebRequest r, DeferredResult<T> result, Object value) {
+					public <T> void postProcess(NativeWebRequest r, DeferredResult<T> result, @Nullable Object value) {
 						getMvcResult(request).setAsyncResult(value);
 					}
 				});
@@ -116,6 +118,7 @@ final class TestDispatcherServlet extends DispatcherServlet {
 	}
 
 	@Override
+	@Nullable
 	protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
 		HandlerExecutionChain chain = super.getHandler(request);
 		if (chain != null) {
@@ -136,6 +139,7 @@ final class TestDispatcherServlet extends DispatcherServlet {
 	}
 
 	@Override
+	@Nullable
 	protected ModelAndView processHandlerException(HttpServletRequest request, HttpServletResponse response,
 			@Nullable Object handler, Exception ex) throws Exception {
 

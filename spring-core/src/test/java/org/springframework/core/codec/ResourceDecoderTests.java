@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import org.springframework.core.ResolvableType;
@@ -28,6 +28,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.testfixture.codec.AbstractDecoderTests;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StreamUtils;
 
@@ -37,20 +38,20 @@ import static org.springframework.core.ResolvableType.forClass;
 /**
  * @author Arjen Poutsma
  */
-public class ResourceDecoderTests extends AbstractDecoderTestCase<ResourceDecoder> {
+class ResourceDecoderTests extends AbstractDecoderTests<ResourceDecoder> {
 
 	private final byte[] fooBytes = "foo".getBytes(StandardCharsets.UTF_8);
 
 	private final byte[] barBytes = "bar".getBytes(StandardCharsets.UTF_8);
 
 
-	public ResourceDecoderTests() {
+	ResourceDecoderTests() {
 		super(new ResourceDecoder());
 	}
 
 	@Override
 	@Test
-	public void canDecode() {
+	protected void canDecode() {
 		assertThat(this.decoder.canDecode(forClass(InputStreamResource.class), MimeTypeUtils.TEXT_PLAIN)).isTrue();
 		assertThat(this.decoder.canDecode(forClass(ByteArrayResource.class), MimeTypeUtils.TEXT_PLAIN)).isTrue();
 		assertThat(this.decoder.canDecode(forClass(Resource.class), MimeTypeUtils.TEXT_PLAIN)).isTrue();
@@ -61,7 +62,7 @@ public class ResourceDecoderTests extends AbstractDecoderTestCase<ResourceDecode
 
 	@Override
 	@Test
-	public void decode() {
+	protected void decode() {
 		Flux<DataBuffer> input = Flux.concat(dataBuffer(this.fooBytes), dataBuffer(this.barBytes));
 
 		testDecodeAll(input, Resource.class, step -> step
@@ -79,11 +80,9 @@ public class ResourceDecoderTests extends AbstractDecoderTestCase<ResourceDecode
 	}
 
 	@Override
-	public void decodeToMono() {
-		Flux<DataBuffer> input = Flux.concat(
-				dataBuffer(this.fooBytes),
-				dataBuffer(this.barBytes));
-
+	@Test
+	protected void decodeToMono() {
+		Flux<DataBuffer> input = Flux.concat(dataBuffer(this.fooBytes), dataBuffer(this.barBytes));
 		testDecodeToMonoAll(input, ResolvableType.forClass(Resource.class),
 				step -> step
 						.consumeNextWith(value -> {
@@ -101,6 +100,24 @@ public class ResourceDecoderTests extends AbstractDecoderTestCase<ResourceDecode
 						.verify(),
 				null,
 				Collections.singletonMap(ResourceDecoder.FILENAME_HINT, "testFile"));
+	}
+
+	@Test
+	void decodeInputStreamResource() {
+		Flux<DataBuffer> input = Flux.concat(dataBuffer(this.fooBytes), dataBuffer(this.barBytes));
+		testDecodeAll(input, InputStreamResource.class, step -> step
+				.consumeNextWith(resource -> {
+					try {
+						byte[] bytes = StreamUtils.copyToByteArray(resource.getInputStream());
+						assertThat(new String(bytes)).isEqualTo("foobar");
+						assertThat(resource.contentLength()).isEqualTo(fooBytes.length + barBytes.length);
+					}
+					catch (IOException ex) {
+						throw new AssertionError(ex.getMessage(), ex);
+					}
+				})
+				.expectComplete()
+				.verify());
 	}
 
 }

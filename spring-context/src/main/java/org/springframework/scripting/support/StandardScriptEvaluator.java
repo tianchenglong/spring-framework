@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.scripting.support;
 
 import java.io.IOException;
 import java.util.Map;
+
 import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -172,8 +173,8 @@ public class StandardScriptEvaluator implements ScriptEvaluator, BeanClassLoader
 		if (StringUtils.hasText(this.engineName)) {
 			return StandardScriptUtils.retrieveEngineByName(scriptEngineManager, this.engineName);
 		}
-		else if (script instanceof ResourceScriptSource) {
-			Resource resource = ((ResourceScriptSource) script).getResource();
+		else if (script instanceof ResourceScriptSource resourceScriptSource) {
+			Resource resource = resourceScriptSource.getResource();
 			String extension = StringUtils.getFilenameExtension(resource.getFilename());
 			if (extension == null) {
 				throw new IllegalStateException(

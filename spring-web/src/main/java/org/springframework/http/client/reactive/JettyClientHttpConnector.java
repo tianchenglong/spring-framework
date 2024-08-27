@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.reactive.client.ContentChunk;
+import org.eclipse.jetty.client.Request;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferFactory;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.core.io.buffer.JettyDataBufferFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -43,7 +42,7 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 
 	private final HttpClient httpClient;
 
-	private DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+	private JettyDataBufferFactory bufferFactory = new JettyDataBufferFactory();
 
 
 	/**
@@ -51,21 +50,6 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 	 */
 	public JettyClientHttpConnector() {
 		this(new HttpClient());
-	}
-
-	/**
-	 * Constructor with an {@link JettyResourceFactory} that will manage shared resources.
-	 * @param resourceFactory the {@link JettyResourceFactory} to use
-	 * @param customizer the lambda used to customize the {@link HttpClient}
-	 * @deprecated in favor of {@link JettyClientHttpConnector#JettyClientHttpConnector(HttpClient, JettyResourceFactory)}
-	 */
-	@Deprecated
-	public JettyClientHttpConnector(
-			JettyResourceFactory resourceFactory, @Nullable Consumer<HttpClient> customizer) {
-		this(new HttpClient(), resourceFactory);
-		if (customizer != null) {
-			customizer.accept(this.httpClient);
-		}
 	}
 
 	/**
@@ -80,9 +64,9 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 	 * with the given {@link JettyResourceFactory}.
 	 * @param httpClient the {@link HttpClient} to use
 	 * @param resourceFactory the {@link JettyResourceFactory} to use
+	 * @since 5.2
 	 */
-	public JettyClientHttpConnector(HttpClient httpClient,
-			@Nullable JettyResourceFactory resourceFactory) {
+	public JettyClientHttpConnector(HttpClient httpClient, @Nullable JettyResourceFactory resourceFactory) {
 		Assert.notNull(httpClient, "HttpClient is required");
 		if (resourceFactory != null) {
 			httpClient.setExecutor(resourceFactory.getExecutor());
@@ -92,8 +76,26 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 		this.httpClient = httpClient;
 	}
 
+	/**
+	 * Constructor with an {@link JettyResourceFactory} that will manage shared resources.
+	 * @param resourceFactory the {@link JettyResourceFactory} to use
+	 * @param customizer the lambda used to customize the {@link HttpClient}
+	 * @deprecated as of 5.2, in favor of
+	 * {@link JettyClientHttpConnector#JettyClientHttpConnector(HttpClient, JettyResourceFactory)}
+	 */
+	@Deprecated
+	public JettyClientHttpConnector(JettyResourceFactory resourceFactory, @Nullable Consumer<HttpClient> customizer) {
+		this(new HttpClient(), resourceFactory);
+		if (customizer != null) {
+			customizer.accept(this.httpClient);
+		}
+	}
 
-	public void setBufferFactory(DataBufferFactory bufferFactory) {
+
+	/**
+	 * Set the buffer factory to use.
+	 */
+	public void setBufferFactory(JettyDataBufferFactory bufferFactory) {
 		this.bufferFactory = bufferFactory;
 	}
 
@@ -115,29 +117,18 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 			}
 		}
 
-		JettyClientHttpRequest clientHttpRequest = new JettyClientHttpRequest(
-				this.httpClient.newRequest(uri).method(method.toString()), this.bufferFactory);
+		Request jettyRequest = this.httpClient.newRequest(uri).method(method.toString());
+		JettyClientHttpRequest request = new JettyClientHttpRequest(jettyRequest, this.bufferFactory);
 
-		return requestCallback.apply(clientHttpRequest).then(Mono.from(
-				clientHttpRequest.getReactiveRequest().response((response, chunks) -> {
-					Flux<DataBuffer> content = Flux.from(chunks).map(this::toDataBuffer);
-					return Mono.just(new JettyClientHttpResponse(response, content));
-				})));
+		return requestCallback.apply(request).then(execute(request));
 	}
 
-	private DataBuffer toDataBuffer(ContentChunk chunk) {
-
-		// We must copy until this is resolved:
-		// https://github.com/eclipse/jetty.project/issues/2429
-
-		// Use copy instead of buffer wrapping because Callback#succeeded() is
-		// used not only to release the buffer but also to request more data
-		// which is a problem for codecs that buffer data.
-
-		DataBuffer buffer = this.bufferFactory.allocateBuffer(chunk.buffer.capacity());
-		buffer.write(chunk.buffer);
-		chunk.callback.succeeded();
-		return buffer;
+	private Mono<ClientHttpResponse> execute(JettyClientHttpRequest request) {
+		return Mono.fromDirect(request.toReactiveRequest()
+				.response((reactiveResponse, chunkPublisher) -> {
+					Flux<DataBuffer> content = Flux.from(chunkPublisher).map(this.bufferFactory::wrap);
+					return Mono.just(new JettyClientHttpResponse(reactiveResponse, content));
+				}));
 	}
 
 }

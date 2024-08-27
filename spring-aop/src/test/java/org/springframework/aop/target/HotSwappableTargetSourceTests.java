@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,30 @@
 
 package org.springframework.aop.target;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.DefaultPointcutAdvisor;
+import org.springframework.aop.testfixture.interceptor.SerializableNopInterceptor;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
-import org.springframework.tests.aop.interceptor.SerializableNopInterceptor;
-import org.springframework.tests.sample.beans.Person;
-import org.springframework.tests.sample.beans.SerializablePerson;
-import org.springframework.tests.sample.beans.SideEffectBean;
-import org.springframework.util.SerializationTestUtils;
+import org.springframework.beans.testfixture.beans.Person;
+import org.springframework.beans.testfixture.beans.SerializablePerson;
+import org.springframework.beans.testfixture.beans.SideEffectBean;
+import org.springframework.core.testfixture.io.SerializationTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.springframework.tests.TestResourceUtils.qualifiedResource;
+import static org.springframework.core.testfixture.io.ResourceTestUtils.qualifiedResource;
 
 /**
  * @author Rod Johnson
  * @author Chris Beams
  */
-public class HotSwappableTargetSourceTests {
+class HotSwappableTargetSourceTests {
 
 	/** Initial count value set in bean factory XML */
 	private static final int INITIAL_COUNT = 10;
@@ -47,7 +47,7 @@ public class HotSwappableTargetSourceTests {
 	private DefaultListableBeanFactory beanFactory;
 
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		this.beanFactory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(this.beanFactory).loadBeanDefinitions(
@@ -57,7 +57,7 @@ public class HotSwappableTargetSourceTests {
 	/**
 	 * We must simulate container shutdown, which should clear threads.
 	 */
-	@After
+	@AfterEach
 	public void close() {
 		// Will call pool.close()
 		this.beanFactory.destroySingletons();
@@ -68,7 +68,7 @@ public class HotSwappableTargetSourceTests {
 	 * Check it works like a normal invoker
 	 */
 	@Test
-	public void testBasicFunctionality() {
+	void testBasicFunctionality() {
 		SideEffectBean proxied = (SideEffectBean) beanFactory.getBean("swappable");
 		assertThat(proxied.getCount()).isEqualTo(INITIAL_COUNT);
 		proxied.doWork();
@@ -80,7 +80,7 @@ public class HotSwappableTargetSourceTests {
 	}
 
 	@Test
-	public void testValidSwaps() {
+	void testValidSwaps() {
 		SideEffectBean target1 = (SideEffectBean) beanFactory.getBean("target1");
 		SideEffectBean target2 = (SideEffectBean) beanFactory.getBean("target2");
 
@@ -107,7 +107,7 @@ public class HotSwappableTargetSourceTests {
 	}
 
 	@Test
-	public void testRejectsSwapToNull() {
+	void testRejectsSwapToNull() {
 		HotSwappableTargetSource swapper = (HotSwappableTargetSource) beanFactory.getBean("swapper");
 		assertThatIllegalArgumentException().as("Shouldn't be able to swap to invalid value").isThrownBy(() ->
 				swapper.swap(null))
@@ -117,7 +117,7 @@ public class HotSwappableTargetSourceTests {
 	}
 
 	@Test
-	public void testSerialization() throws Exception {
+	void testSerialization() throws Exception {
 		SerializablePerson sp1 = new SerializablePerson();
 		sp1.setName("Tony");
 		SerializablePerson sp2 = new SerializablePerson();
@@ -134,7 +134,7 @@ public class HotSwappableTargetSourceTests {
 		hts.swap(sp2);
 		assertThat(p.getName()).isEqualTo(sp2.getName());
 
-		p = (Person) SerializationTestUtils.serializeAndDeserialize(p);
+		p = SerializationTestUtils.serializeAndDeserialize(p);
 		// We need to get a reference to the client-side targetsource
 		hts = (HotSwappableTargetSource) ((Advised) p).getTargetSource();
 		assertThat(p.getName()).isEqualTo(sp2.getName());

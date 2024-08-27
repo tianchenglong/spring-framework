@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import javax.servlet.ServletContext;
+
+import jakarta.servlet.ServletContext;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
@@ -129,6 +130,7 @@ class StubWebApplicationContext implements WebApplicationContext {
 	}
 
 	@Override
+	@Nullable
 	public ApplicationContext getParent() {
 		return null;
 	}
@@ -217,8 +219,15 @@ class StubWebApplicationContext implements WebApplicationContext {
 	}
 
 	@Override
+	@Nullable
 	public Class<?> getType(String name) throws NoSuchBeanDefinitionException {
 		return this.beanFactory.getType(name);
+	}
+
+	@Override
+	@Nullable
+	public Class<?> getType(String name, boolean allowFactoryBeanInit) throws NoSuchBeanDefinitionException {
+		return this.beanFactory.getType(name, allowFactoryBeanInit);
 	}
 
 	@Override
@@ -247,8 +256,23 @@ class StubWebApplicationContext implements WebApplicationContext {
 	}
 
 	@Override
+	public <T> ObjectProvider<T> getBeanProvider(Class<T> requiredType, boolean allowEagerInit) {
+		return this.beanFactory.getBeanProvider(requiredType, allowEagerInit);
+	}
+
+	@Override
+	public <T> ObjectProvider<T> getBeanProvider(ResolvableType requiredType, boolean allowEagerInit) {
+		return this.beanFactory.getBeanProvider(requiredType, allowEagerInit);
+	}
+
+	@Override
 	public String[] getBeanNamesForType(@Nullable ResolvableType type) {
 		return this.beanFactory.getBeanNamesForType(type);
+	}
+
+	@Override
+	public String[] getBeanNamesForType(@Nullable ResolvableType type, boolean includeNonSingletons, boolean allowEagerInit) {
+		return this.beanFactory.getBeanNamesForType(type, includeNonSingletons, allowEagerInit);
 	}
 
 	@Override
@@ -293,12 +317,30 @@ class StubWebApplicationContext implements WebApplicationContext {
 		return this.beanFactory.findAnnotationOnBean(beanName, annotationType);
 	}
 
+	@Override
+	@Nullable
+	public <A extends Annotation> A findAnnotationOnBean(
+			String beanName, Class<A> annotationType, boolean allowFactoryBeanInit)
+			throws NoSuchBeanDefinitionException {
+
+		return this.beanFactory.findAnnotationOnBean(beanName, annotationType, allowFactoryBeanInit);
+	}
+
+	@Override
+	public <A extends Annotation> Set<A> findAllAnnotationsOnBean(
+			String beanName, Class<A> annotationType, boolean allowFactoryBeanInit)
+			throws NoSuchBeanDefinitionException {
+
+		return this.beanFactory.findAllAnnotationsOnBean(beanName, annotationType, allowFactoryBeanInit);
+	}
+
 
 	//---------------------------------------------------------------------
 	// Implementation of HierarchicalBeanFactory interface
 	//---------------------------------------------------------------------
 
 	@Override
+	@Nullable
 	public BeanFactory getParentBeanFactory() {
 		return null;
 	}
@@ -314,6 +356,7 @@ class StubWebApplicationContext implements WebApplicationContext {
 	//---------------------------------------------------------------------
 
 	@Override
+	@Nullable
 	public String getMessage(String code, @Nullable Object[] args, @Nullable String defaultMessage, Locale locale) {
 		return this.messageSource.getMessage(code, args, defaultMessage, locale);
 	}
@@ -372,8 +415,8 @@ class StubWebApplicationContext implements WebApplicationContext {
 
 		@Override
 		public Object initializeBean(Object existingBean, String beanName) throws BeansException {
-			if (existingBean instanceof ApplicationContextAware) {
-				((ApplicationContextAware) existingBean).setApplicationContext(StubWebApplicationContext.this);
+			if (existingBean instanceof ApplicationContextAware applicationContextAware) {
+				applicationContextAware.setApplicationContext(StubWebApplicationContext.this);
 			}
 			return existingBean;
 		}
@@ -383,6 +426,7 @@ class StubWebApplicationContext implements WebApplicationContext {
 			return BeanUtils.instantiateClass(beanClass);
 		}
 
+		@Deprecated
 		@Override
 		public Object createBean(Class<?> beanClass, int autowireMode, boolean dependencyCheck) {
 			return BeanUtils.instantiateClass(beanClass);
@@ -433,11 +477,13 @@ class StubWebApplicationContext implements WebApplicationContext {
 		public void applyBeanPropertyValues(Object existingBean, String beanName) throws BeansException {
 		}
 
+		@SuppressWarnings("deprecation")
 		@Override
 		public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName) {
 			return existingBean;
 		}
 
+		@SuppressWarnings("deprecation")
 		@Override
 		public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName) {
 			return existingBean;

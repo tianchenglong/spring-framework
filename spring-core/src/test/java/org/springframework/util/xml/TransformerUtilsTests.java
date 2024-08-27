@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.util.xml;
 
 import java.util.Properties;
+
 import javax.xml.transform.ErrorListener;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
@@ -25,21 +26,21 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * Unit tests for {@link TransformerUtils}.
+ * Tests for {@link TransformerUtils}.
  *
  * @author Rick Evans
  * @author Arjen Poutsma
  */
-public class TransformerUtilsTests {
+class TransformerUtilsTests {
 
 	@Test
-	public void enableIndentingSunnyDay() throws Exception {
+	void enableIndentingSunnyDay() {
 		Transformer transformer = new StubTransformer();
 		TransformerUtils.enableIndenting(transformer);
 		String indent = transformer.getOutputProperty(OutputKeys.INDENT);
@@ -51,10 +52,10 @@ public class TransformerUtilsTests {
 	}
 
 	@Test
-	public void enableIndentingSunnyDayWithCustomKosherIndentAmount() throws Exception {
+	void enableIndentingSunnyDayWithCustomKosherIndentAmount() {
 		final String indentAmountProperty = "10";
 		Transformer transformer = new StubTransformer();
-		TransformerUtils.enableIndenting(transformer, Integer.valueOf(indentAmountProperty));
+		TransformerUtils.enableIndenting(transformer, Integer.parseInt(indentAmountProperty));
 		String indent = transformer.getOutputProperty(OutputKeys.INDENT);
 		assertThat(indent).isNotNull();
 		assertThat(indent).isEqualTo("yes");
@@ -64,7 +65,7 @@ public class TransformerUtilsTests {
 	}
 
 	@Test
-	public void disableIndentingSunnyDay() throws Exception {
+	void disableIndentingSunnyDay() {
 		Transformer transformer = new StubTransformer();
 		TransformerUtils.disableIndenting(transformer);
 		String indent = transformer.getOutputProperty(OutputKeys.INDENT);
@@ -73,25 +74,25 @@ public class TransformerUtilsTests {
 	}
 
 	@Test
-	public void enableIndentingWithNullTransformer() throws Exception {
+	void enableIndentingWithNullTransformer() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				TransformerUtils.enableIndenting(null));
 	}
 
 	@Test
-	public void disableIndentingWithNullTransformer() throws Exception {
+	void disableIndentingWithNullTransformer() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				TransformerUtils.disableIndenting(null));
 	}
 
 	@Test
-	public void enableIndentingWithNegativeIndentAmount() throws Exception {
+	void enableIndentingWithNegativeIndentAmount() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				TransformerUtils.enableIndenting(new StubTransformer(), -21938));
 	}
 
 	@Test
-	public void enableIndentingWithZeroIndentAmount() throws Exception {
+	void enableIndentingWithZeroIndentAmount() {
 		TransformerUtils.enableIndenting(new StubTransformer(), 0);
 	}
 

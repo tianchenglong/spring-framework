@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.jms.config;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 /**
  * @author Stephane Nicoll
  */
-public class JmsListenerEndpointRegistryTests {
+class JmsListenerEndpointRegistryTests {
 
 	private final JmsListenerEndpointRegistry registry = new JmsListenerEndpointRegistry();
 
@@ -32,25 +32,25 @@ public class JmsListenerEndpointRegistryTests {
 
 
 	@Test
-	public void createWithNullEndpoint() {
+	void createWithNullEndpoint() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				registry.registerListenerContainer(null, containerFactory));
 	}
 
 	@Test
-	public void createWithNullEndpointId() {
+	void createWithNullEndpointId() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				registry.registerListenerContainer(new SimpleJmsListenerEndpoint(), containerFactory));
 	}
 
 	@Test
-	public void createWithNullContainerFactory() {
+	void createWithNullContainerFactory() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				registry.registerListenerContainer(createEndpoint("foo", "myDestination"), null));
 	}
 
 	@Test
-	public void createWithDuplicateEndpointId() {
+	void createWithDuplicateEndpointId() {
 		registry.registerListenerContainer(createEndpoint("test", "queue"), containerFactory);
 
 		assertThatIllegalStateException().isThrownBy(() ->

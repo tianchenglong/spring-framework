@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.http.server.PathContainer;
 import org.springframework.web.util.pattern.PatternParseException.PatternMessage;
@@ -28,18 +28,21 @@ import org.springframework.web.util.pattern.PatternParseException.PatternMessage
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Exercise the {@link PathPatternParser}.
+ *
  * @author Andy Clement
+ * @author Sam Brannen
  */
-public class PathPatternParserTests {
+class PathPatternParserTests {
 
 	private PathPattern pathPattern;
 
 	@Test
-	public void basicPatterns() {
+	void basicPatterns() {
 		checkStructure("/");
 		checkStructure("/foo");
 		checkStructure("foo");
@@ -49,7 +52,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void singleCharWildcardPatterns() {
+	void singleCharWildcardPatterns() {
 		pathPattern = checkStructure("?");
 		assertPathElements(pathPattern, SingleCharWildcardedPathElement.class);
 		checkStructure("/?/");
@@ -57,7 +60,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void multiwildcardPattern() {
+	void multiwildcardPattern() {
 		pathPattern = checkStructure("/**");
 		assertPathElements(pathPattern, WildcardTheRestPathElement.class);
 		// this is not double wildcard, it's / then **acb (an odd, unnecessary use of double *)
@@ -66,7 +69,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void toStringTests() {
+	void toStringTests() {
 		assertThat(checkStructure("/{*foobar}").toChainString()).isEqualTo("CaptureTheRest(/{*foobar})");
 		assertThat(checkStructure("{foobar}").toChainString()).isEqualTo("CaptureVariable({foobar})");
 		assertThat(checkStructure("abc").toChainString()).isEqualTo("Literal(abc)");
@@ -78,7 +81,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void captureTheRestPatterns() {
+	void captureTheRestPatterns() {
 		pathPattern = parse("{*foobar}");
 		assertThat(pathPattern.computePatternString()).isEqualTo("/{*foobar}");
 		assertPathElements(pathPattern, CaptureTheRestPathElement.class);
@@ -96,7 +99,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void equalsAndHashcode() {
+	void equalsAndHashcode() {
 		PathPatternParser caseInsensitiveParser = new PathPatternParser();
 		caseInsensitiveParser.setCaseSensitive(false);
 		PathPatternParser caseSensitiveParser = new PathPatternParser();
@@ -106,29 +109,31 @@ public class PathPatternParserTests {
 		assertThat(pp2).isEqualTo(pp1);
 		assertThat(pp2.hashCode()).isEqualTo(pp1.hashCode());
 		assertThat(pp3).isNotEqualTo(pp1);
-		assertThat(pp1.equals("abc")).isFalse();
 
 		pp1 = caseInsensitiveParser.parse("/abc");
 		pp2 = caseSensitiveParser.parse("/abc");
-		assertThat(pp1.equals(pp2)).isFalse();
-		assertThat(pp2.hashCode()).isNotEqualTo((long) pp1.hashCode());
+		assertThat(pp1).isNotEqualTo(pp2);
+		assertThat(pp2.hashCode()).isNotEqualTo(pp1.hashCode());
 	}
 
 	@Test
-	public void regexPathElementPatterns() {
+	void regexPathElementPatterns() {
 		checkError("/{var:[^/]*}", 8, PatternMessage.MISSING_CLOSE_CAPTURE);
 		checkError("/{var:abc", 8, PatternMessage.MISSING_CLOSE_CAPTURE);
-		checkError("/{var:a{{1,2}}}", 6, PatternMessage.REGEX_PATTERN_SYNTAX_EXCEPTION);
+
+		// Do not check the expected position due a change in RegEx parsing in JDK 13.
+		// See https://github.com/spring-projects/spring-framework/issues/23669
+		checkError("/{var:a{{1,2}}}", PatternMessage.REGEX_PATTERN_SYNTAX_EXCEPTION);
 
 		pathPattern = checkStructure("/{var:\\\\}");
 		PathElement next = pathPattern.getHeadSection().next;
 		assertThat(next.getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
-		assertMatches(pathPattern,"/\\");
+		assertMatches(pathPattern, "/\\");
 
 		pathPattern = checkStructure("/{var:\\/}");
 		next = pathPattern.getHeadSection().next;
 		assertThat(next.getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
-		assertNoMatch(pathPattern,"/aaa");
+		assertNoMatch(pathPattern, "/aaa");
 
 		pathPattern = checkStructure("/{var:a{1,2}}");
 		next = pathPattern.getHeadSection().next;
@@ -137,25 +142,25 @@ public class PathPatternParserTests {
 		pathPattern = checkStructure("/{var:[^\\/]*}");
 		next = pathPattern.getHeadSection().next;
 		assertThat(next.getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
-		PathPattern.PathMatchInfo result = matchAndExtract(pathPattern,"/foo");
+		PathPattern.PathMatchInfo result = matchAndExtract(pathPattern, "/foo");
 		assertThat(result.getUriVariables().get("var")).isEqualTo("foo");
 
 		pathPattern = checkStructure("/{var:\\[*}");
 		next = pathPattern.getHeadSection().next;
 		assertThat(next.getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
-		result = matchAndExtract(pathPattern,"/[[[");
+		result = matchAndExtract(pathPattern, "/[[[");
 		assertThat(result.getUriVariables().get("var")).isEqualTo("[[[");
 
 		pathPattern = checkStructure("/{var:[\\{]*}");
 		next = pathPattern.getHeadSection().next;
 		assertThat(next.getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
-		result = matchAndExtract(pathPattern,"/{{{");
+		result = matchAndExtract(pathPattern, "/{{{");
 		assertThat(result.getUriVariables().get("var")).isEqualTo("{{{");
 
 		pathPattern = checkStructure("/{var:[\\}]*}");
 		next = pathPattern.getHeadSection().next;
 		assertThat(next.getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
-		result = matchAndExtract(pathPattern,"/}}}");
+		result = matchAndExtract(pathPattern, "/}}}");
 		assertThat(result.getUriVariables().get("var")).isEqualTo("}}}");
 
 		pathPattern = checkStructure("*");
@@ -178,16 +183,17 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void completeCapturingPatterns() {
+	void completeCapturingPatterns() {
 		pathPattern = checkStructure("{foo}");
 		assertThat(pathPattern.getHeadSection().getClass().getName()).isEqualTo(CaptureVariablePathElement.class.getName());
 		checkStructure("/{foo}");
 		checkStructure("/{f}/");
 		checkStructure("/{foo}/{bar}/{wibble}");
+		checkStructure("/{mobile-number}"); // gh-23101
 	}
 
 	@Test
-	public void noEncoding() {
+	void noEncoding() {
 		// Check no encoding of expressions or constraints
 		PathPattern pp = parse("/{var:f o}");
 		assertThat(pp.toChainString()).isEqualTo("Separator(/) CaptureVariable({var:f o})");
@@ -200,7 +206,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void completeCaptureWithConstraints() {
+	void completeCaptureWithConstraints() {
 		pathPattern = checkStructure("{foo:...}");
 		assertPathElements(pathPattern, CaptureVariablePathElement.class);
 		pathPattern = checkStructure("{foo:[0-9]*}");
@@ -209,7 +215,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void partialCapturingPatterns() {
+	void partialCapturingPatterns() {
 		pathPattern = checkStructure("{foo}abc");
 		assertThat(pathPattern.getHeadSection().getClass().getName()).isEqualTo(RegexPathElement.class.getName());
 		checkStructure("abc{foo}");
@@ -222,7 +228,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void illegalCapturePatterns() {
+	void illegalCapturePatterns() {
 		checkError("{abc/", 4, PatternMessage.MISSING_CLOSE_CAPTURE);
 		checkError("{abc:}/", 5, PatternMessage.MISSING_REGEX_CONSTRAINT);
 		checkError("{", 1, PatternMessage.MISSING_CLOSE_CAPTURE);
@@ -243,14 +249,14 @@ public class PathPatternParserTests {
 		PathPattern pp = parse("/{abc:foo(bar)}");
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				pp.matchAndExtract(toPSC("/foo")))
-			.withMessage("No capture groups allowed in the constraint regex: foo(bar)");
+				.withMessage("No capture groups allowed in the constraint regex: foo(bar)");
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				pp.matchAndExtract(toPSC("/foobar")))
-			.withMessage("No capture groups allowed in the constraint regex: foo(bar)");
+				.withMessage("No capture groups allowed in the constraint regex: foo(bar)");
 	}
 
 	@Test
-	public void badPatterns() {
+	void badPatterns() {
 //		checkError("/{foo}{bar}/",6,PatternMessage.CANNOT_HAVE_ADJACENT_CAPTURES);
 		checkError("/{?}/", 2, PatternMessage.ILLEGAL_CHARACTER_AT_START_OF_CAPTURE_DESCRIPTOR, "?");
 		checkError("/{a?b}/", 3, PatternMessage.ILLEGAL_CHARACTER_IN_CAPTURE_DESCRIPTOR, "?");
@@ -260,7 +266,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void patternPropertyGetCaptureCountTests() {
+	void patternPropertyGetCaptureCountTests() {
 		// Test all basic section types
 		assertThat(parse("{foo}").getCapturedVariableCount()).isEqualTo(1);
 		assertThat(parse("foo").getCapturedVariableCount()).isEqualTo(0);
@@ -282,7 +288,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void patternPropertyGetWildcardCountTests() {
+	void patternPropertyGetWildcardCountTests() {
 		// Test all basic section types
 		assertThat(parse("{foo}").getScore()).isEqualTo(computeScore(1, 0));
 		assertThat(parse("foo").getScore()).isEqualTo(computeScore(0, 0));
@@ -305,7 +311,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void multipleSeparatorPatterns() {
+	void multipleSeparatorPatterns() {
 		pathPattern = checkStructure("///aaa");
 		assertThat(pathPattern.getNormalizedLength()).isEqualTo(6);
 		assertPathElements(pathPattern, SeparatorPathElement.class, SeparatorPathElement.class,
@@ -323,7 +329,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void patternPropertyGetLengthTests() {
+	void patternPropertyGetLengthTests() {
 		// Test all basic section types
 		assertThat(parse("{foo}").getNormalizedLength()).isEqualTo(1);
 		assertThat(parse("foo").getNormalizedLength()).isEqualTo(3);
@@ -345,7 +351,7 @@ public class PathPatternParserTests {
 	}
 
 	@Test
-	public void compareTests() {
+	void compareTests() {
 		PathPattern p1, p2, p3;
 
 		// Based purely on number of captures
@@ -359,7 +365,7 @@ public class PathPatternParserTests {
 		patterns.add(p3);
 		patterns.add(p1);
 		Collections.sort(patterns);
-		assertThat(patterns.get(0)).isEqualTo(p1);
+		assertThat(patterns).element(0).isEqualTo(p1);
 
 		// Based purely on length
 		p1 = parse("/a/b/c");
@@ -371,7 +377,7 @@ public class PathPatternParserTests {
 		patterns.add(p3);
 		patterns.add(p1);
 		Collections.sort(patterns);
-		assertThat(patterns.get(0)).isEqualTo(p3);
+		assertThat(patterns).element(0).isEqualTo(p3);
 
 		// Based purely on 'wildness'
 		p1 = parse("/*");
@@ -383,12 +389,12 @@ public class PathPatternParserTests {
 		patterns.add(p3);
 		patterns.add(p1);
 		Collections.sort(patterns);
-		assertThat(patterns.get(0)).isEqualTo(p1);
+		assertThat(patterns).element(0).isEqualTo(p1);
 
 		// Based purely on catchAll
 		p1 = parse("{*foobar}");
 		p2 = parse("{*goo}");
-		assertThat(p1.compareTo(p2) != 0).isTrue();
+		assertThat(p1.compareTo(p2)).isNotEqualTo(0);
 
 		p1 = parse("/{*foobar}");
 		p2 = parse("/abc/{*ww}");
@@ -404,8 +410,25 @@ public class PathPatternParserTests {
 		patterns.add(p3);
 		patterns.add(p1);
 		Collections.sort(patterns);
-		assertThat(patterns.get(0)).isEqualTo(p3);
-		assertThat(patterns.get(1)).isEqualTo(p2);
+		assertThat(patterns).element(0).isEqualTo(p3);
+		assertThat(patterns).element(1).isEqualTo(p2);
+	}
+
+	@Test
+	void captureTheRestWithinPatternNotSupported() {
+		PathPatternParser parser = new PathPatternParser();
+		assertThatThrownBy(() -> parser.parse("/resources/**/details"))
+				.isInstanceOf(PatternParseException.class)
+				.extracting("messageType").isEqualTo(PatternMessage.NO_MORE_DATA_EXPECTED_AFTER_CAPTURE_THE_REST);
+	}
+
+	@Test
+	void separatorTests() {
+		PathPatternParser parser = new PathPatternParser();
+		parser.setPathOptions(PathContainer.Options.create('.', false));
+		String rawPattern = "first.second.{last}";
+		PathPattern pattern = parser.parse(rawPattern);
+		assertThat(pattern.computePatternString()).isEqualTo(rawPattern);
 	}
 
 	private PathPattern parse(String pattern) {
@@ -422,22 +445,36 @@ public class PathPatternParserTests {
 		return pp;
 	}
 
+	/**
+	 * Delegates to {@link #checkError(String, int, PatternMessage, String...)},
+	 * passing {@code -1} as the {@code expectedPos}.
+	 * @since 5.2
+	 */
+	private void checkError(String pattern, PatternMessage expectedMessage, String... expectedInserts) {
+		checkError(pattern, -1, expectedMessage, expectedInserts);
+	}
+
+	/**
+	 * @param expectedPos the expected position, or {@code -1} if the position should not be checked
+	 */
 	private void checkError(String pattern, int expectedPos, PatternMessage expectedMessage,
 			String... expectedInserts) {
 
-		assertThatExceptionOfType(PatternParseException.class).isThrownBy(() ->
-				pathPattern = parse(pattern))
-		.satisfies(ex -> {
-			assertThat(ex.getPosition()).as(ex.toDetailedString()).isEqualTo(expectedPos);
-			assertThat(ex.getMessageType()).as(ex.toDetailedString()).isEqualTo(expectedMessage);
-			if (expectedInserts.length != 0) {
-				assertThat(ex.getInserts()).isEqualTo(expectedInserts);
-			}
-		});
+		assertThatExceptionOfType(PatternParseException.class)
+				.isThrownBy(() -> pathPattern = parse(pattern))
+				.satisfies(ex -> {
+					if (expectedPos >= 0) {
+						assertThat(ex.getPosition()).as(ex.toDetailedString()).isEqualTo(expectedPos);
+					}
+					assertThat(ex.getMessageType()).as(ex.toDetailedString()).isEqualTo(expectedMessage);
+					if (expectedInserts.length != 0) {
+						assertThat(ex.getInserts()).isEqualTo(expectedInserts);
+					}
+				});
 	}
 
 	@SafeVarargs
-	private final void assertPathElements(PathPattern p, Class<? extends PathElement>... sectionClasses) {
+	private void assertPathElements(PathPattern p, Class<? extends PathElement>... sectionClasses) {
 		PathElement head = p.getHeadSection();
 		for (Class<? extends PathElement> sectionClass : sectionClasses) {
 			if (head == null) {

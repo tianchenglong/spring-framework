@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,15 @@ import java.io.Serializable;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.Advisor;
 import org.springframework.aop.BeforeAdvice;
 import org.springframework.aop.framework.Advised;
+import org.springframework.beans.testfixture.beans.ITestBean;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.tests.sample.beans.ITestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -40,33 +40,34 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Dmitriy Kopylenko
  * @author Chris Beams
  */
-public class AdvisorAdapterRegistrationTests {
+class AdvisorAdapterRegistrationTests {
 
-	@Before
-	@After
-	public void resetGlobalAdvisorAdapterRegistry() {
+	@BeforeEach
+	@AfterEach
+	void resetGlobalAdvisorAdapterRegistry() {
 		GlobalAdvisorAdapterRegistry.reset();
 	}
 
 	@Test
-	public void testAdvisorAdapterRegistrationManagerNotPresentInContext() {
+	void advisorAdapterRegistrationManagerNotPresentInContext() {
 		ClassPathXmlApplicationContext ctx =
 			new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-without-bpp.xml", getClass());
 		ITestBean tb = (ITestBean) ctx.getBean("testBean");
 		// just invoke any method to see if advice fired
-		assertThatExceptionOfType(UnknownAdviceTypeException.class).isThrownBy(
-				tb::getName);
+		assertThatExceptionOfType(UnknownAdviceTypeException.class).isThrownBy(tb::getName);
 		assertThat(getAdviceImpl(tb).getInvocationCounter()).isZero();
+		ctx.close();
 	}
 
 	@Test
-	public void testAdvisorAdapterRegistrationManagerPresentInContext() {
+	void advisorAdapterRegistrationManagerPresentInContext() {
 		ClassPathXmlApplicationContext ctx =
 			new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-with-bpp.xml", getClass());
 		ITestBean tb = (ITestBean) ctx.getBean("testBean");
 		// just invoke any method to see if advice fired
 		tb.getName();
 		getAdviceImpl(tb).getInvocationCounter();
+		ctx.close();
 	}
 
 	private SimpleBeforeAdviceImpl getAdviceImpl(ITestBean tb) {
@@ -80,7 +81,7 @@ public class AdvisorAdapterRegistrationTests {
 
 interface SimpleBeforeAdvice extends BeforeAdvice {
 
-	void before() throws Throwable;
+	void before();
 
 }
 
@@ -107,7 +108,7 @@ class SimpleBeforeAdviceImpl implements SimpleBeforeAdvice {
 	private int invocationCounter;
 
 	@Override
-	public void before() throws Throwable {
+	public void before() {
 		++invocationCounter;
 	}
 

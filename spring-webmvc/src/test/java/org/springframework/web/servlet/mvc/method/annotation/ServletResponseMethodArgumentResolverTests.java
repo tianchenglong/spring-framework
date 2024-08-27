@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@ package org.springframework.web.servlet.mvc.method.annotation;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.lang.reflect.Method;
-import javax.servlet.ServletResponse;
 
-import org.junit.Before;
-import org.junit.Test;
+import jakarta.servlet.ServletResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.MethodParameter;
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.mock.web.test.MockHttpServletResponse;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
+import org.springframework.web.testfixture.servlet.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Arjen Poutsma
  */
-public class ServletResponseMethodArgumentResolverTests {
+class ServletResponseMethodArgumentResolverTests {
 
 	private ServletResponseMethodArgumentResolver resolver;
 
@@ -50,8 +50,8 @@ public class ServletResponseMethodArgumentResolverTests {
 	private Method method;
 
 
-	@Before
-	public void setup() throws Exception {
+	@BeforeEach
+	void setup() throws Exception {
 		resolver = new ServletResponseMethodArgumentResolver();
 		mavContainer = new ModelAndViewContainer();
 		servletResponse = new MockHttpServletResponse();
@@ -62,7 +62,7 @@ public class ServletResponseMethodArgumentResolverTests {
 
 
 	@Test
-	public void servletResponse() throws Exception {
+	void servletResponse() throws Exception {
 		MethodParameter servletResponseParameter = new MethodParameter(method, 0);
 		assertThat(resolver.supportsParameter(servletResponseParameter)).as("ServletResponse not supported").isTrue();
 
@@ -81,7 +81,7 @@ public class ServletResponseMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void outputStream() throws Exception {
+	void outputStream() throws Exception {
 		MethodParameter outputStreamParameter = new MethodParameter(method, 1);
 		assertThat(resolver.supportsParameter(outputStreamParameter)).as("OutputStream not supported").isTrue();
 
@@ -91,7 +91,7 @@ public class ServletResponseMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void writer() throws Exception {
+	void writer() throws Exception {
 		MethodParameter writerParameter = new MethodParameter(method, 2);
 		assertThat(resolver.supportsParameter(writerParameter)).as("Writer not supported").isTrue();
 

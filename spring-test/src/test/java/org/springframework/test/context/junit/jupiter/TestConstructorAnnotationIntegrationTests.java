@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,19 +23,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.SpringJUnitJupiterTestSuite;
 import org.springframework.test.context.junit.jupiter.comics.Dog;
 import org.springframework.test.context.junit.jupiter.comics.Person;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.context.TestConstructor.AutowireMode.ALL;
 
 /**
  * Integration tests which demonstrate support for automatically
  * {@link Autowired @Autowired} test class constructors in conjunction with the
  * {@link TestConstructor @TestConstructor} annotation
- *
- * <p>To run these tests in an IDE that does not have built-in support for the JUnit
- * Platform, simply run {@link SpringJUnitJupiterTestSuite} as a JUnit 4 test.
  *
  * @author Sam Brannen
  * @since 5.2
@@ -45,13 +42,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringJUnitConfig(TestConfig.class)
 @TestPropertySource(properties = "enigma = 42")
-@TestConstructor(autowire = true)
+@TestConstructor(autowireMode = ALL)
 class TestConstructorAnnotationIntegrationTests {
 
 	final ApplicationContext applicationContext;
 	final Person dilbert;
 	final Dog dog;
 	final Integer enigma;
+
 
 	TestConstructorAnnotationIntegrationTests(ApplicationContext applicationContext, Person dilbert, Dog dog,
 			@Value("${enigma}") Integer enigma) {

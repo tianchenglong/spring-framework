@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,19 @@
 
 package org.springframework.beans.factory.config;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
-import org.springframework.tests.sample.beans.TestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.tests.TestResourceUtils.qualifiedResource;
+import static org.springframework.core.testfixture.io.ResourceTestUtils.qualifiedResource;
 
 /**
  * Simple test to illustrate and verify scope usage.
@@ -37,17 +37,17 @@ import static org.springframework.tests.TestResourceUtils.qualifiedResource;
  * @author Juergen Hoeller
  * @author Chris Beams
  */
-public class SimpleScopeTests {
+class SimpleScopeTests {
 
 	private DefaultListableBeanFactory beanFactory;
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 		beanFactory = new DefaultListableBeanFactory();
 		Scope scope = new NoOpScope() {
 			private int index;
-			private List<TestBean> objects = new LinkedList<>(); {
+			private List<TestBean> objects = new ArrayList<>(); {
 				objects.add(new TestBean());
 				objects.add(new TestBean());
 			}
@@ -63,7 +63,7 @@ public class SimpleScopeTests {
 		beanFactory.registerScope("myScope", scope);
 
 		String[] scopeNames = beanFactory.getRegisteredScopeNames();
-		assertThat(scopeNames.length).isEqualTo(1);
+		assertThat(scopeNames).hasSize(1);
 		assertThat(scopeNames[0]).isEqualTo("myScope");
 		assertThat(beanFactory.getRegisteredScope("myScope")).isSameAs(scope);
 
@@ -73,7 +73,7 @@ public class SimpleScopeTests {
 
 
 	@Test
-	public void testCanGetScopedObject() {
+	void testCanGetScopedObject() {
 		TestBean tb1 = (TestBean) beanFactory.getBean("usesScope");
 		TestBean tb2 = (TestBean) beanFactory.getBean("usesScope");
 		assertThat(tb2).isNotSameAs(tb1);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@
 package org.springframework.core;
 
 import java.lang.annotation.Annotation;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.lang.reflect.Method;
 
 import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
@@ -34,28 +32,37 @@ import org.springframework.util.ClassUtils;
 @SuppressWarnings("unchecked")
 public abstract class KotlinDetector {
 
-	private static final Log logger = LogFactory.getLog(KotlinDetector.class);
-
 	@Nullable
 	private static final Class<? extends Annotation> kotlinMetadata;
+
+	@Nullable
+	private static final Class<? extends Annotation> kotlinJvmInline;
+
+	// For ConstantFieldFeature compliance, otherwise could be deduced from kotlinMetadata
+	private static final boolean kotlinPresent;
 
 	private static final boolean kotlinReflectPresent;
 
 	static {
-		Class<?> metadata;
 		ClassLoader classLoader = KotlinDetector.class.getClassLoader();
+		Class<?> metadata = null;
+		Class<?> jvmInline = null;
 		try {
 			metadata = ClassUtils.forName("kotlin.Metadata", classLoader);
+			try {
+				jvmInline = ClassUtils.forName("kotlin.jvm.JvmInline", classLoader);
+			}
+			catch (ClassNotFoundException ex) {
+				// JVM inline support not available
+			}
 		}
 		catch (ClassNotFoundException ex) {
 			// Kotlin API not available - no Kotlin support
-			metadata = null;
 		}
 		kotlinMetadata = (Class<? extends Annotation>) metadata;
-		kotlinReflectPresent = ClassUtils.isPresent("kotlin.reflect.full.KClasses", classLoader);
-		if (kotlinMetadata != null && !kotlinReflectPresent) {
-			logger.info("Kotlin reflection implementation not found at runtime, related features won't be available.");
-		}
+		kotlinPresent = (kotlinMetadata != null);
+		kotlinReflectPresent = kotlinPresent && ClassUtils.isPresent("kotlin.reflect.full.KClasses", classLoader);
+		kotlinJvmInline = (Class<? extends Annotation>) jvmInline;
 	}
 
 
@@ -63,7 +70,7 @@ public abstract class KotlinDetector {
 	 * Determine whether Kotlin is present in general.
 	 */
 	public static boolean isKotlinPresent() {
-		return (kotlinMetadata != null);
+		return kotlinPresent;
 	}
 
 	/**
@@ -77,9 +84,37 @@ public abstract class KotlinDetector {
 	/**
 	 * Determine whether the given {@code Class} is a Kotlin type
 	 * (with Kotlin metadata present on it).
+	 *
+	 * <p>As of Kotlin 2.0, this method can't be used to detect Kotlin
+	 * lambdas unless they are annotated with <code>@JvmSerializableLambda</code>
+	 * as invokedynamic has become the default method for lambda generation.
 	 */
 	public static boolean isKotlinType(Class<?> clazz) {
 		return (kotlinMetadata != null && clazz.getDeclaredAnnotation(kotlinMetadata) != null);
+	}
+
+	/**
+	 * Return {@code true} if the method is a suspending function.
+	 * @since 5.3
+	 */
+	public static boolean isSuspendingFunction(Method method) {
+		if (KotlinDetector.isKotlinType(method.getDeclaringClass())) {
+			Class<?>[] types = method.getParameterTypes();
+			if (types.length > 0 && "kotlin.coroutines.Continuation".equals(types[types.length - 1].getName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Determine whether the given {@code Class} is an inline class
+	 * (annotated with {@code @JvmInline}).
+	 * @since 6.1.5
+	 * @see <a href="https://kotlinlang.org/docs/inline-classes.html">Kotlin inline value classes</a>
+	 */
+	public static boolean isInlineClass(Class<?> clazz) {
+		return (kotlinJvmInline != null && clazz.getDeclaredAnnotation(kotlinJvmInline) != null);
 	}
 
 }

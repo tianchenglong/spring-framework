@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,14 @@
 
 package org.springframework.test.context.web.socket;
 
-import javax.websocket.server.ServerContainer;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import jakarta.websocket.server.ServerContainer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
@@ -39,17 +38,26 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Sam Brannen
  * @since 4.3.1
  */
-@RunWith(SpringRunner.class)
-@WebAppConfiguration
-public class WebSocketServletServerContainerFactoryBeanTests {
-
-	@Autowired
-	ServerContainer serverContainer;
-
+@SpringJUnitWebConfig
+class WebSocketServletServerContainerFactoryBeanTests {
 
 	@Test
-	public void servletServerContainerFactoryBeanSupport() {
+	void servletServerContainerFactoryBeanSupport(@Autowired ServerContainer serverContainer) {
 		assertThat(serverContainer.getDefaultMaxTextMessageBufferSize()).isEqualTo(42);
+	}
+
+	/*
+	 * @Nested test class to verify that the MockServerContainerContextCustomizerFactory
+	 * properly supports finding @WebAppConfiguration on an enclosing class.
+	 */
+	@Nested
+	class NestedTests {
+
+		@Test  // gh-29037
+		void servletServerContainerFactoryBeanSupport(@Autowired ServerContainer serverContainer) {
+			assertThat(serverContainer.getDefaultMaxTextMessageBufferSize()).isEqualTo(42);
+		}
+
 	}
 
 

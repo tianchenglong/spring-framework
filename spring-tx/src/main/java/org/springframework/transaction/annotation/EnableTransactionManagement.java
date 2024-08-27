@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,14 @@ import org.springframework.core.Ordered;
  * Enables Spring's annotation-driven transaction management capability, similar to
  * the support found in Spring's {@code <tx:*>} XML namespace. To be used on
  * {@link org.springframework.context.annotation.Configuration @Configuration}
- * classes as follows:
+ * classes to configure traditional, imperative transaction management or
+ * reactive transaction management.
+ *
+ * <p>The following example demonstrates imperative transaction management
+ * using a {@link org.springframework.transaction.PlatformTransactionManager
+ * PlatformTransactionManager}. For reactive transaction management, configure a
+ * {@link org.springframework.transaction.ReactiveTransactionManager
+ * ReactiveTransactionManager} instead.
  *
  * <pre class="code">
  * &#064;Configuration
@@ -78,17 +85,17 @@ import org.springframework.core.Ordered;
  * In both of the scenarios above, {@code @EnableTransactionManagement} and {@code
  * <tx:annotation-driven/>} are responsible for registering the necessary Spring
  * components that power annotation-driven transaction management, such as the
- * TransactionInterceptor and the proxy- or AspectJ-based advice that weave the
+ * TransactionInterceptor and the proxy- or AspectJ-based advice that weaves the
  * interceptor into the call stack when {@code JdbcFooRepository}'s {@code @Transactional}
  * methods are invoked.
  *
  * <p>A minor difference between the two examples lies in the naming of the {@code
- * PlatformTransactionManager} bean: In the {@code @Bean} case, the name is
+ * TransactionManager} bean: In the {@code @Bean} case, the name is
  * <em>"txManager"</em> (per the name of the method); in the XML case, the name is
- * <em>"transactionManager"</em>. The {@code <tx:annotation-driven/>} is hard-wired to
+ * <em>"transactionManager"</em>. {@code <tx:annotation-driven/>} is hard-wired to
  * look for a bean named "transactionManager" by default, however
  * {@code @EnableTransactionManagement} is more flexible; it will fall back to a by-type
- * lookup for any {@code PlatformTransactionManager} bean in the container. Thus the name
+ * lookup for any {@code TransactionManager} bean in the container. Thus the name
  * can be "txManager", "transactionManager", or "tm": it simply does not matter.
  *
  * <p>For those that wish to establish a more direct relationship between
@@ -123,8 +130,8 @@ import org.springframework.core.Ordered;
  *     }
  * }</pre>
  *
- * This approach may be desirable simply because it is more explicit, or it may be
- * necessary in order to distinguish between two {@code PlatformTransactionManager} beans
+ * <p>This approach may be desirable simply because it is more explicit, or it may be
+ * necessary in order to distinguish between two {@code TransactionManager} beans
  * present in the same container.  As the name suggests, the
  * {@code annotationDrivenTransactionManager()} will be the one used for processing
  * {@code @Transactional} methods. See {@link TransactionManagementConfigurer} Javadoc
@@ -156,10 +163,10 @@ import org.springframework.core.Ordered;
 public @interface EnableTransactionManagement {
 
 	/**
-	 * Indicate whether subclass-based (CGLIB) proxies are to be created ({@code true}) as
-	 * opposed to standard Java interface-based proxies ({@code false}). The default is
-	 * {@code false}. <strong>Applicable only if {@link #mode()} is set to
-	 * {@link AdviceMode#PROXY}</strong>.
+	 * Indicate whether subclass-based (CGLIB) proxies are to be created ({@code true})
+	 * as opposed to standard Java interface-based proxies ({@code false}).
+	 * The default is {@code false}. <strong>Applicable only if {@link #mode()}
+	 * is set to {@link AdviceMode#PROXY}</strong>.
 	 * <p>Note that setting this attribute to {@code true} will affect <em>all</em>
 	 * Spring-managed beans requiring proxying, not just those marked with
 	 * {@code @Transactional}. For example, other beans marked with Spring's
@@ -187,5 +194,26 @@ public @interface EnableTransactionManagement {
 	 * <p>The default is {@link Ordered#LOWEST_PRECEDENCE}.
 	 */
 	int order() default Ordered.LOWEST_PRECEDENCE;
+
+	/**
+	 * Indicate the rollback behavior for rule-based transactions without
+	 * custom rollback rules: default is rollback on unchecked exception,
+	 * this can be switched to rollback on any exception (including checked).
+	 * <p>Note that transaction-specific rollback rules override the default
+	 * behavior but retain the chosen default for unspecified exceptions.
+	 * This is the case for Spring's {@link Transactional} as well as JTA's
+	 * {@link jakarta.transaction.Transactional} when used with Spring here.
+	 * <p>Unless you rely on EJB-style business exceptions with commit behavior,
+	 * it is advisable to switch to {@link RollbackOn#ALL_EXCEPTIONS} for a
+	 * consistent rollback even in case of a (potentially accidental) checked
+	 * exception. Also, it is advisable to make that switch for Kotlin-based
+	 * applications where there is no enforcement of checked exceptions at all.
+	 * @since 6.2
+	 * @see Transactional#rollbackFor()
+	 * @see Transactional#noRollbackFor()
+	 * @see jakarta.transaction.Transactional#rollbackOn()
+	 * @see jakarta.transaction.Transactional#dontRollbackOn()
+	 */
+	RollbackOn rollbackOn() default RollbackOn.RUNTIME_EXCEPTIONS;
 
 }

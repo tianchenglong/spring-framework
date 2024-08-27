@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
 package org.springframework.aop.aspectj;
 
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.aspectj.AroundAdviceBindingTestAspect.AroundAdviceBindingCollaborator;
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.testfixture.beans.ITestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.sample.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -38,9 +38,9 @@ import static org.mockito.Mockito.verify;
  * @author Adrian Colyer
  * @author Chris Beams
  */
-public class AroundAdviceBindingTests {
+class AroundAdviceBindingTests {
 
-	private AroundAdviceBindingCollaborator mockCollaborator;
+	private AroundAdviceBindingCollaborator mockCollaborator = mock();
 
 	private ITestBean testBeanProxy;
 
@@ -48,11 +48,12 @@ public class AroundAdviceBindingTests {
 
 	protected ApplicationContext ctx;
 
-	@Before
-	public void onSetUp() throws Exception {
+
+	@BeforeEach
+	void onSetUp() throws Exception {
 		ctx = new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
 
-		AroundAdviceBindingTestAspect  aroundAdviceAspect = ((AroundAdviceBindingTestAspect) ctx.getBean("testAspect"));
+		AroundAdviceBindingTestAspect aroundAdviceAspect = (AroundAdviceBindingTestAspect) ctx.getBean("testAspect");
 
 		ITestBean injectedTestBean = (ITestBean) ctx.getBean("testBean");
 		assertThat(AopUtils.isAopProxy(injectedTestBean)).isTrue();
@@ -62,30 +63,29 @@ public class AroundAdviceBindingTests {
 
 		this.testBeanTarget = (TestBean) ((Advised) testBeanProxy).getTargetSource().getTarget();
 
-		mockCollaborator = mock(AroundAdviceBindingCollaborator.class);
 		aroundAdviceAspect.setCollaborator(mockCollaborator);
 	}
 
 	@Test
-	public void testOneIntArg() {
+	void testOneIntArg() {
 		testBeanProxy.setAge(5);
 		verify(mockCollaborator).oneIntArg(5);
 	}
 
 	@Test
-	public void testOneObjectArgBoundToTarget() {
+	void testOneObjectArgBoundToTarget() {
 		testBeanProxy.getAge();
 		verify(mockCollaborator).oneObjectArg(this.testBeanTarget);
 	}
 
 	@Test
-	public void testOneIntAndOneObjectArgs() {
+	void testOneIntAndOneObjectArgs() {
 		testBeanProxy.setAge(5);
 		verify(mockCollaborator).oneIntAndOneObject(5, this.testBeanProxy);
 	}
 
 	@Test
-	public void testJustJoinPoint() {
+	void testJustJoinPoint() {
 		testBeanProxy.getAge();
 		verify(mockCollaborator).justJoinPoint("getAge");
 	}
@@ -109,7 +109,7 @@ class AroundAdviceBindingTestAspect {
 
 	public int oneObjectArg(ProceedingJoinPoint pjp, Object bean) throws Throwable {
 		this.collaborator.oneObjectArg(bean);
-		return ((Integer) pjp.proceed()).intValue();
+		return (Integer) pjp.proceed();
 	}
 
 	public void oneIntAndOneObject(ProceedingJoinPoint pjp, int x , Object o) throws Throwable {
@@ -119,7 +119,7 @@ class AroundAdviceBindingTestAspect {
 
 	public int justJoinPoint(ProceedingJoinPoint pjp) throws Throwable {
 		this.collaborator.justJoinPoint(pjp.getSignature().getName());
-		return ((Integer) pjp.proceed()).intValue();
+		return (Integer) pjp.proceed();
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ package org.springframework.aop.aspectj;
 import java.io.Serializable;
 
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -31,36 +32,40 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Adrian Colyer
  * @author Chris Beams
  */
-public class DeclarationOrderIndependenceTests {
+class DeclarationOrderIndependenceTests {
+
+	private ClassPathXmlApplicationContext ctx;
 
 	private TopsyTurvyAspect aspect;
 
 	private TopsyTurvyTarget target;
 
 
-	@Before
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
-		aspect = (TopsyTurvyAspect) ctx.getBean("topsyTurvyAspect");
-		target = (TopsyTurvyTarget) ctx.getBean("topsyTurvyTarget");
+	@BeforeEach
+	void setup() {
+		this.ctx = new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+		aspect = ctx.getBean(TopsyTurvyAspect.class);
+		target = ctx.getBean(TopsyTurvyTarget.class);
+	}
+
+	@AfterEach
+	void tearDown() {
+		this.ctx.close();
 	}
 
 
 	@Test
-	public void testTargetIsSerializable() {
-		boolean condition = this.target instanceof Serializable;
-		assertThat(condition).as("target bean is serializable").isTrue();
+	void targetIsSerializable() {
+		assertThat(this.target).isInstanceOf(Serializable.class);
 	}
 
 	@Test
-	public void testTargetIsBeanNameAware() {
-		boolean condition = this.target instanceof BeanNameAware;
-		assertThat(condition).as("target bean is bean name aware").isTrue();
+	void targetIsBeanNameAware() {
+		assertThat(this.target).isInstanceOf(BeanNameAware.class);
 	}
 
 	@Test
-	public void testBeforeAdviceFiringOk() {
+	void beforeAdviceFiringOk() {
 		AspectCollaborator collab = new AspectCollaborator();
 		this.aspect.setCollaborator(collab);
 		this.target.doSomething();
@@ -68,7 +73,7 @@ public class DeclarationOrderIndependenceTests {
 	}
 
 	@Test
-	public void testAroundAdviceFiringOk() {
+	void aroundAdviceFiringOk() {
 		AspectCollaborator collab = new AspectCollaborator();
 		this.aspect.setCollaborator(collab);
 		this.target.getX();
@@ -76,7 +81,7 @@ public class DeclarationOrderIndependenceTests {
 	}
 
 	@Test
-	public void testAfterReturningFiringOk() {
+	void afterReturningFiringOk() {
 		AspectCollaborator collab = new AspectCollaborator();
 		this.aspect.setCollaborator(collab);
 		this.target.getX();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ public abstract class AbstractSqlParameterSource implements SqlParameterSource {
 
 
 	/**
-	 * Register a SQL type for the given parameter.
+	 * Register an SQL type for the given parameter.
 	 * @param paramName the name of the parameter
 	 * @param sqlType the SQL type of the parameter
 	 */
@@ -57,7 +57,7 @@ public abstract class AbstractSqlParameterSource implements SqlParameterSource {
 	}
 
 	/**
-	 * Register a SQL type for the given parameter.
+	 * Register an SQL type for the given parameter.
 	 * @param paramName the name of the parameter
 	 * @param typeName the type name of the parameter
 	 */
@@ -105,8 +105,8 @@ public abstract class AbstractSqlParameterSource implements SqlParameterSource {
 			StringJoiner result = new StringJoiner(", ", getClass().getSimpleName() + " {", "}");
 			for (String parameterName : parameterNames) {
 				Object value = getValue(parameterName);
-				if (value instanceof SqlParameterValue) {
-					value = ((SqlParameterValue) value).getValue();
+				if (value instanceof SqlParameterValue sqlParameterValue) {
+					value = sqlParameterValue.getValue();
 				}
 				String typeName = getTypeName(parameterName);
 				if (typeName == null) {

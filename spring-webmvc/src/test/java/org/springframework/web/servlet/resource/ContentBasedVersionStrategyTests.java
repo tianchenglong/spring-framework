@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ package org.springframework.web.servlet.resource;
 import java.io.IOException;
 import java.util.Collections;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -30,24 +30,24 @@ import org.springframework.util.FileCopyUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link ContentVersionStrategy}.
+ * Tests for {@link ContentVersionStrategy}.
  *
  * @author Brian Clozel
  * @author Rossen Stoyanchev
  */
-public class ContentBasedVersionStrategyTests {
+class ContentBasedVersionStrategyTests {
 
-	private ContentVersionStrategy versionStrategy = new ContentVersionStrategy();
+	private final ContentVersionStrategy versionStrategy = new ContentVersionStrategy();
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 		VersionResourceResolver versionResourceResolver = new VersionResourceResolver();
 		versionResourceResolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
 	}
 
 	@Test
-	public void extractVersion() {
+	void extractVersion() {
 		String hash = "7fbe76cdac6093784895bb4989203e5a";
 		String path = "font-awesome/css/font-awesome.min-" + hash + ".css";
 
@@ -56,7 +56,7 @@ public class ContentBasedVersionStrategyTests {
 	}
 
 	@Test
-	public void removeVersion() {
+	void removeVersion() {
 		String hash = "7fbe76cdac6093784895bb4989203e5a";
 		String file = "font-awesome/css/font-awesome.min%s%s.css";
 
@@ -64,7 +64,7 @@ public class ContentBasedVersionStrategyTests {
 	}
 
 	@Test
-	public void getResourceVersion() throws IOException {
+	void getResourceVersion() throws IOException {
 		Resource expected = new ClassPathResource("test/bar.css", getClass());
 		String hash = DigestUtils.md5DigestAsHex(FileCopyUtils.copyToByteArray(expected.getInputStream()));
 
@@ -72,7 +72,7 @@ public class ContentBasedVersionStrategyTests {
 	}
 
 	@Test
-	public void addVersionToUrl() {
+	void addVersionToUrl() {
 		assertThat(this.versionStrategy.addVersion("test/bar.css", "123")).isEqualTo("test/bar-123.css");
 	}
 

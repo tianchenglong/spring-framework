@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
-import org.springframework.core.GenericTypeResolver;
 import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ConcurrentReferenceHashMap;
@@ -48,7 +48,7 @@ import org.springframework.util.StringUtils;
  */
 public final class Property {
 
-	private static Map<Property, Annotation[]> annotationCache = new ConcurrentReferenceHashMap<>();
+	private static final Map<Property, Annotation[]> annotationCache = new ConcurrentReferenceHashMap<>();
 
 	private final Class<?> objectType;
 
@@ -119,7 +119,7 @@ public final class Property {
 	}
 
 
-	// package private
+	// Package private
 
 	MethodParameter getMethodParameter() {
 		return this.methodParameter;
@@ -133,7 +133,7 @@ public final class Property {
 	}
 
 
-	// internal helpers
+	// Internal helpers
 
 	private String resolveName() {
 		if (this.readMethod != null) {
@@ -143,10 +143,13 @@ public final class Property {
 			}
 			else {
 				index = this.readMethod.getName().indexOf("is");
-				if (index == -1) {
-					throw new IllegalArgumentException("Not a getter method");
+				if (index != -1) {
+					index += 2;
 				}
-				index += 2;
+				else {
+					// Record-style plain accessor method, e.g. name()
+					index = 0;
+				}
 			}
 			return StringUtils.uncapitalize(this.readMethod.getName().substring(index));
 		}
@@ -187,7 +190,7 @@ public final class Property {
 		if (getReadMethod() == null) {
 			return null;
 		}
-		return resolveParameterType(new MethodParameter(getReadMethod(), -1));
+		return new MethodParameter(getReadMethod(), -1).withContainingClass(getObjectType());
 	}
 
 	@Nullable
@@ -195,13 +198,7 @@ public final class Property {
 		if (getWriteMethod() == null) {
 			return null;
 		}
-		return resolveParameterType(new MethodParameter(getWriteMethod(), 0));
-	}
-
-	private MethodParameter resolveParameterType(MethodParameter parameter) {
-		// needed to resolve generic property types that parameterized by sub-classes e.g. T getFoo();
-		GenericTypeResolver.resolveParameterType(parameter, getObjectType());
-		return parameter;
+		return new MethodParameter(getWriteMethod(), 0).withContainingClass(getObjectType());
 	}
 
 	private Annotation[] resolveAnnotations() {
@@ -263,23 +260,17 @@ public final class Property {
 
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof Property)) {
-			return false;
-		}
-		Property otherProperty = (Property) other;
-		return (ObjectUtils.nullSafeEquals(this.objectType, otherProperty.objectType) &&
-				ObjectUtils.nullSafeEquals(this.name, otherProperty.name) &&
-				ObjectUtils.nullSafeEquals(this.readMethod, otherProperty.readMethod) &&
-				ObjectUtils.nullSafeEquals(this.writeMethod, otherProperty.writeMethod));
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof Property that &&
+				ObjectUtils.nullSafeEquals(this.objectType, that.objectType) &&
+				ObjectUtils.nullSafeEquals(this.name, that.name) &&
+				ObjectUtils.nullSafeEquals(this.readMethod, that.readMethod) &&
+				ObjectUtils.nullSafeEquals(this.writeMethod, that.writeMethod)));
 	}
 
 	@Override
 	public int hashCode() {
-		return (ObjectUtils.nullSafeHashCode(this.objectType) * 31 + ObjectUtils.nullSafeHashCode(this.name));
+		return Objects.hash(this.objectType, this.name);
 	}
 
 }

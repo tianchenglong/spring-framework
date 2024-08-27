@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,17 +33,16 @@ import com.fasterxml.jackson.databind.cfg.SerializerFactoryConfig;
 import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
 import com.fasterxml.jackson.databind.ser.SerializerFactory;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
 import org.mozilla.javascript.ScriptableObject;
 
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.mock.web.test.MockHttpServletResponse;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.servlet.View;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
+import org.springframework.web.testfixture.servlet.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -51,39 +50,28 @@ import static org.mockito.Mockito.mock;
 
 /**
  * @author Sebastien Deleuze
+ * @author Sam Brannen
  */
-public class MappingJackson2XmlViewTests {
+class MappingJackson2XmlViewTests {
 
-	private MappingJackson2XmlView view;
+	private MappingJackson2XmlView view = new MappingJackson2XmlView();
 
-	private MockHttpServletRequest request;
+	private MockHttpServletRequest request = new MockHttpServletRequest();
 
-	private MockHttpServletResponse response;
+	private MockHttpServletResponse response = new MockHttpServletResponse();
 
-	private Context jsContext;
+	private Context jsContext = ContextFactory.getGlobal().enterContext();
 
-	private ScriptableObject jsScope;
-
-
-	@Before
-	public void setUp() {
-		request = new MockHttpServletRequest();
-		response = new MockHttpServletResponse();
-
-		jsContext = ContextFactory.getGlobal().enterContext();
-		jsScope = jsContext.initStandardObjects();
-
-		view = new MappingJackson2XmlView();
-	}
+	private ScriptableObject jsScope = jsContext.initStandardObjects();
 
 
 	@Test
-	public void isExposePathVars() {
-		assertThat(view.isExposePathVariables()).as("Must not expose path variables").isEqualTo(false);
+	void isExposePathVars() {
+		assertThat(view.isExposePathVariables()).as("Must not expose path variables").isFalse();
 	}
 
 	@Test
-	public void renderSimpleMap() throws Exception {
+	void renderSimpleMap() throws Exception {
 		Map<String, Object> model = new HashMap<>();
 		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
 		model.put("foo", "bar");
@@ -93,31 +81,34 @@ public class MappingJackson2XmlViewTests {
 
 		assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
 
-		assertThat(response.getContentType()).isEqualTo(MappingJackson2XmlView.DEFAULT_CONTENT_TYPE);
+		MediaType mediaType = MediaType.parseMediaType(response.getContentType());
+		assertThat(mediaType.isCompatibleWith(MediaType.parseMediaType(MappingJackson2XmlView.DEFAULT_CONTENT_TYPE))).isTrue();
 
 		String jsonResult = response.getContentAsString();
-		assertThat(jsonResult.length() > 0).isTrue();
+		assertThat(jsonResult).isNotEmpty();
 		assertThat(response.getContentLength()).isEqualTo(jsonResult.length());
 
 		validateResult();
 	}
 
 	@Test
-	public void renderWithSelectedContentType() throws Exception {
+	void renderWithSelectedContentType() throws Exception {
 		Map<String, Object> model = new HashMap<>();
 		model.put("foo", "bar");
 
 		view.render(model, request, response);
-		assertThat(response.getContentType()).isEqualTo("application/xml");
+		MediaType mediaType = MediaType.parseMediaType(response.getContentType());
+		assertThat(mediaType.isCompatibleWith(MediaType.APPLICATION_XML)).isTrue();
 
 		request.setAttribute(View.SELECTED_CONTENT_TYPE, new MediaType("application", "vnd.example-v2+xml"));
 		view.render(model, request, response);
 
-		assertThat(response.getContentType()).isEqualTo("application/vnd.example-v2+xml");
+		mediaType = MediaType.parseMediaType(response.getContentType());
+		assertThat(mediaType.isCompatibleWith(MediaType.parseMediaType("application/vnd.example-v2+xml"))).isTrue();
 	}
 
 	@Test
-	public void renderCaching() throws Exception {
+	void renderCaching() throws Exception {
 		view.setDisableCaching(false);
 
 		Map<String, Object> model = new HashMap<>();
@@ -130,7 +121,7 @@ public class MappingJackson2XmlViewTests {
 	}
 
 	@Test
-	public void renderSimpleBean() throws Exception {
+	void renderSimpleBean() throws Exception {
 		Object bean = new TestBeanSimple();
 		Map<String, Object> model = new HashMap<>();
 		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
@@ -139,28 +130,28 @@ public class MappingJackson2XmlViewTests {
 		view.setUpdateContentLength(true);
 		view.render(model, request, response);
 
-		assertThat(response.getContentAsString().length() > 0).isTrue();
+		assertThat(response.getContentAsString()).isNotEmpty();
 		assertThat(response.getContentLength()).isEqualTo(response.getContentAsString().length());
 
 		validateResult();
 	}
 
 	@Test
-	public void renderWithCustomSerializerLocatedByAnnotation() throws Exception {
+	void renderWithCustomSerializerLocatedByAnnotation() throws Exception {
 		Object bean = new TestBeanSimpleAnnotated();
 		Map<String, Object> model = new HashMap<>();
 		model.put("foo", bean);
 
 		view.render(model, request, response);
 
-		assertThat(response.getContentAsString().length() > 0).isTrue();
-		assertThat(response.getContentAsString().contains("<testBeanSimple>custom</testBeanSimple>")).isTrue();
+		assertThat(response.getContentAsString()).isNotEmpty();
+		assertThat(response.getContentAsString()).contains("<testBeanSimple>custom</testBeanSimple>");
 
 		validateResult();
 	}
 
 	@Test
-	public void renderWithCustomSerializerLocatedByFactory() throws Exception {
+	void renderWithCustomSerializerLocatedByFactory() throws Exception {
 		SerializerFactory factory = new DelegatingSerializerFactory(null);
 		XmlMapper mapper = new XmlMapper();
 		mapper.setSerializerFactory(factory);
@@ -173,14 +164,14 @@ public class MappingJackson2XmlViewTests {
 		view.render(model, request, response);
 
 		String result = response.getContentAsString();
-		assertThat(result.length() > 0).isTrue();
-		assertThat(result.contains("custom</testBeanSimple>")).isTrue();
+		assertThat(result).isNotEmpty();
+		assertThat(result).contains("custom</testBeanSimple>");
 
 		validateResult();
 	}
 
 	@Test
-	public void renderOnlySpecifiedModelKey() throws Exception {
+	void renderOnlySpecifiedModelKey() throws Exception {
 
 		view.setModelKey("bar");
 		Map<String, Object> model = new HashMap<>();
@@ -191,16 +182,16 @@ public class MappingJackson2XmlViewTests {
 		view.render(model, request, response);
 
 		String result = response.getContentAsString();
-		assertThat(result.length() > 0).isTrue();
-		assertThat(result.contains("foo")).isFalse();
-		assertThat(result.contains("bar")).isTrue();
-		assertThat(result.contains("baz")).isFalse();
+		assertThat(result).isNotEmpty();
+		assertThat(result).doesNotContain("foo");
+		assertThat(result).contains("bar");
+		assertThat(result).doesNotContain("baz");
 
 		validateResult();
 	}
 
 	@Test
-	public void renderModelWithMultipleKeys() throws Exception {
+	void renderModelWithMultipleKeys() {
 		Map<String, Object> model = new TreeMap<>();
 		model.put("foo", "foo");
 		model.put("bar", "bar");
@@ -210,7 +201,7 @@ public class MappingJackson2XmlViewTests {
 	}
 
 	@Test
-	public void renderSimpleBeanWithJsonView() throws Exception {
+	void renderSimpleBeanWithJsonView() throws Exception {
 		Object bean = new TestBeanSimple();
 		Map<String, Object> model = new HashMap<>();
 		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
@@ -221,18 +212,19 @@ public class MappingJackson2XmlViewTests {
 		view.render(model, request, response);
 
 		String content = response.getContentAsString();
-		assertThat(content.length() > 0).isTrue();
+		assertThat(content).isNotEmpty();
 		assertThat(response.getContentLength()).isEqualTo(content.length());
-		assertThat(content.contains("foo")).isTrue();
-		assertThat(content.contains("boo")).isFalse();
-		assertThat(content.contains(JsonView.class.getName())).isFalse();
+		assertThat(content).contains("foo");
+		assertThat(content).doesNotContain("boo");
+		assertThat(content).doesNotContain(JsonView.class.getName());
 	}
 
 	private void validateResult() throws Exception {
 		Object xmlResult =
 				jsContext.evaluateString(jsScope, "(" + response.getContentAsString() + ")", "XML Stream", 1, null);
 		assertThat(xmlResult).as("XML Result did not eval as valid JavaScript").isNotNull();
-		assertThat(response.getContentType()).isEqualTo("application/xml");
+		MediaType mediaType = MediaType.parseMediaType(response.getContentType());
+		assertThat(mediaType.isCompatibleWith(MediaType.APPLICATION_XML)).isTrue();
 	}
 
 

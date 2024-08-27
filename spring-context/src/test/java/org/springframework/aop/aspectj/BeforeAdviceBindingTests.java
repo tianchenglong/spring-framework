@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,16 @@
 
 package org.springframework.aop.aspectj;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.aspectj.AdviceBindingTestAspect.AdviceBindingCollaborator;
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.testfixture.beans.ITestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.sample.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -37,19 +38,20 @@ import static org.mockito.Mockito.verify;
  * @author Rod Johnson
  * @author Chris Beams
  */
-public class BeforeAdviceBindingTests {
+class BeforeAdviceBindingTests {
 
-	private AdviceBindingCollaborator mockCollaborator;
+	private ClassPathXmlApplicationContext ctx;
+
+	private AdviceBindingCollaborator mockCollaborator = mock();
 
 	private ITestBean testBeanProxy;
 
 	private TestBean testBeanTarget;
 
 
-	@Before
-	public void setup() throws Exception {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+	@BeforeEach
+	void setup() throws Exception {
+		this.ctx = new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
 
 		testBeanProxy = (ITestBean) ctx.getBean("testBean");
 		assertThat(AopUtils.isAopProxy(testBeanProxy)).isTrue();
@@ -59,55 +61,44 @@ public class BeforeAdviceBindingTests {
 
 		AdviceBindingTestAspect beforeAdviceAspect = (AdviceBindingTestAspect) ctx.getBean("testAspect");
 
-		mockCollaborator = mock(AdviceBindingCollaborator.class);
 		beforeAdviceAspect.setCollaborator(mockCollaborator);
 	}
 
+	@AfterEach
+	void tearDown() {
+		this.ctx.close();
+	}
+
+
 
 	@Test
-	public void testOneIntArg() {
+	void oneIntArg() {
 		testBeanProxy.setAge(5);
 		verify(mockCollaborator).oneIntArg(5);
 	}
 
 	@Test
-	public void testOneObjectArgBoundToProxyUsingThis() {
+	void oneObjectArgBoundToProxyUsingThis() {
 		testBeanProxy.getAge();
 		verify(mockCollaborator).oneObjectArg(this.testBeanProxy);
 	}
 
 	@Test
-	public void testOneIntAndOneObjectArgs() {
+	void oneIntAndOneObjectArgs() {
 		testBeanProxy.setAge(5);
 		verify(mockCollaborator).oneIntAndOneObject(5,this.testBeanTarget);
 	}
 
 	@Test
-	public void testNeedsJoinPoint() {
+	void needsJoinPoint() {
 		testBeanProxy.getAge();
 		verify(mockCollaborator).needsJoinPoint("getAge");
 	}
 
 	@Test
-	public void testNeedsJoinPointStaticPart() {
+	void needsJoinPointStaticPart() {
 		testBeanProxy.getAge();
 		verify(mockCollaborator).needsJoinPointStaticPart("getAge");
 	}
 
-
-}
-
-
-class AuthenticationLogger {
-
-	public void logAuthenticationAttempt(String username) {
-		System.out.println("User [" + username + "] attempting to authenticate");
-	}
-
-}
-
-class SecurityManager {
-	public boolean authenticate(String username, String password) {
-		return false;
-	}
 }

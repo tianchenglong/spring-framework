@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,18 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.core.MethodParameter;
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.tests.sample.beans.TestBean;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.annotation.ModelAndViewResolver;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -41,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  *
  * @author Rossen Stoyanchev
  */
-public class ModelAndViewResolverMethodReturnValueHandlerTests {
+class ModelAndViewResolverMethodReturnValueHandlerTests {
 
 	private ModelAndViewResolverMethodReturnValueHandler handler;
 
@@ -52,8 +52,8 @@ public class ModelAndViewResolverMethodReturnValueHandlerTests {
 	private ServletWebRequest request;
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 		mavResolvers = new ArrayList<>();
 		handler = new ModelAndViewResolverMethodReturnValueHandler(mavResolvers);
 		mavContainer = new ModelAndViewContainer();
@@ -62,7 +62,7 @@ public class ModelAndViewResolverMethodReturnValueHandlerTests {
 
 
 	@Test
-	public void modelAndViewResolver() throws Exception {
+	void modelAndViewResolver() throws Exception {
 		MethodParameter returnType = new MethodParameter(getClass().getDeclaredMethod("testBeanReturnValue"), -1);
 		mavResolvers.add(new TestModelAndViewResolver(TestBean.class));
 		TestBean testBean = new TestBean("name");
@@ -75,7 +75,7 @@ public class ModelAndViewResolverMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void modelAndViewResolverUnresolved() throws Exception {
+	void modelAndViewResolverUnresolved() throws Exception {
 		MethodParameter returnType = new MethodParameter(getClass().getDeclaredMethod("intReturnValue"), -1);
 		mavResolvers.add(new TestModelAndViewResolver(TestBean.class));
 		assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() ->
@@ -83,24 +83,24 @@ public class ModelAndViewResolverMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void handleNull() throws Exception {
+	void handleNull() throws Exception {
 		MethodParameter returnType = new MethodParameter(getClass().getDeclaredMethod("testBeanReturnValue"), -1);
 		handler.handleReturnValue(null, returnType, mavContainer, request);
 
 		assertThat(mavContainer.getView()).isNull();
 		assertThat(mavContainer.getViewName()).isNull();
-		assertThat(mavContainer.getModel().isEmpty()).isTrue();
+		assertThat(mavContainer.getModel()).isEmpty();
 	}
 
 	@Test
-	public void handleSimpleType() throws Exception {
+	void handleSimpleType() throws Exception {
 		MethodParameter returnType = new MethodParameter(getClass().getDeclaredMethod("intReturnValue"), -1);
 		assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() ->
 					handler.handleReturnValue(55, returnType, mavContainer, request));
 	}
 
 	@Test
-	public void handleNonSimpleType() throws Exception{
+	void handleNonSimpleType() throws Exception{
 		MethodParameter returnType = new MethodParameter(getClass().getDeclaredMethod("testBeanReturnValue"), -1);
 		handler.handleReturnValue(new TestBean(), returnType, mavContainer, request);
 

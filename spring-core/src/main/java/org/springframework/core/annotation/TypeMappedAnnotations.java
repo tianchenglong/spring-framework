@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,17 +36,16 @@ import org.springframework.lang.Nullable;
  * annotations and meta-annotations using {@link AnnotationTypeMappings}.
  *
  * @author Phillip Webb
+ * @author Sam Brannen
  * @since 5.2
  */
 final class TypeMappedAnnotations implements MergedAnnotations {
-
-	private static final AnnotationFilter FILTER_ALL = (annotationType -> true);
 
 	/**
 	 * Shared instance that can be used when there are no annotations.
 	 */
 	static final MergedAnnotations NONE = new TypeMappedAnnotations(
-			null, new Annotation[0], RepeatableContainers.none(), FILTER_ALL);
+			null, new Annotation[0], RepeatableContainers.none(), AnnotationFilter.ALL);
 
 
 	@Nullable
@@ -57,6 +56,8 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 	@Nullable
 	private final SearchStrategy searchStrategy;
+
+	private final Predicate<Class<?>> searchEnclosingClass;
 
 	@Nullable
 	private final Annotation[] annotations;
@@ -70,11 +71,13 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 
 	private TypeMappedAnnotations(AnnotatedElement element, SearchStrategy searchStrategy,
-			RepeatableContainers repeatableContainers, AnnotationFilter annotationFilter) {
+			Predicate<Class<?>> searchEnclosingClass, RepeatableContainers repeatableContainers,
+			AnnotationFilter annotationFilter) {
 
 		this.source = element;
 		this.element = element;
 		this.searchStrategy = searchStrategy;
+		this.searchEnclosingClass = searchEnclosingClass;
 		this.annotations = null;
 		this.repeatableContainers = repeatableContainers;
 		this.annotationFilter = annotationFilter;
@@ -86,6 +89,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 		this.source = source;
 		this.element = null;
 		this.searchStrategy = null;
+		this.searchEnclosingClass = Search.never;
 		this.annotations = annotations;
 		this.repeatableContainers = repeatableContainers;
 		this.annotationFilter = annotationFilter;
@@ -180,7 +184,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 	@Override
 	public <A extends Annotation> Stream<MergedAnnotation<A>> stream(Class<A> annotationType) {
-		if (this.annotationFilter == FILTER_ALL) {
+		if (this.annotationFilter == AnnotationFilter.ALL) {
 			return Stream.empty();
 		}
 		return StreamSupport.stream(spliterator(annotationType), false);
@@ -188,7 +192,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 	@Override
 	public <A extends Annotation> Stream<MergedAnnotation<A>> stream(String annotationType) {
-		if (this.annotationFilter == FILTER_ALL) {
+		if (this.annotationFilter == AnnotationFilter.ALL) {
 			return Stream.empty();
 		}
 		return StreamSupport.stream(spliterator(annotationType), false);
@@ -196,7 +200,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 	@Override
 	public Stream<MergedAnnotation<Annotation>> stream() {
-		if (this.annotationFilter == FILTER_ALL) {
+		if (this.annotationFilter == AnnotationFilter.ALL) {
 			return Stream.empty();
 		}
 		return StreamSupport.stream(spliterator(), false);
@@ -204,7 +208,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 	@Override
 	public Iterator<MergedAnnotation<Annotation>> iterator() {
-		if (this.annotationFilter == FILTER_ALL) {
+		if (this.annotationFilter == AnnotationFilter.ALL) {
 			return Collections.emptyIterator();
 		}
 		return Spliterators.iterator(spliterator());
@@ -212,8 +216,8 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 	@Override
 	public Spliterator<MergedAnnotation<Annotation>> spliterator() {
-		if (this.annotationFilter == FILTER_ALL) {
-			return Collections.<MergedAnnotation<Annotation>> emptyList().spliterator();
+		if (this.annotationFilter == AnnotationFilter.ALL) {
+			return Spliterators.emptySpliterator();
 		}
 		return spliterator(null);
 	}
@@ -241,19 +245,21 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 			return processor.finish(result);
 		}
 		if (this.element != null && this.searchStrategy != null) {
-			return AnnotationsScanner.scan(criteria, this.element, this.searchStrategy, processor);
+			return AnnotationsScanner.scan(criteria, this.element, this.searchStrategy,
+					this.searchEnclosingClass, processor);
 		}
 		return null;
 	}
 
 
 	static MergedAnnotations from(AnnotatedElement element, SearchStrategy searchStrategy,
-			RepeatableContainers repeatableContainers, AnnotationFilter annotationFilter) {
+			Predicate<Class<?>> searchEnclosingClass, RepeatableContainers repeatableContainers,
+			AnnotationFilter annotationFilter) {
 
-		if (AnnotationsScanner.isKnownEmpty(element, searchStrategy)) {
+		if (AnnotationsScanner.isKnownEmpty(element, searchStrategy, searchEnclosingClass)) {
 			return NONE;
 		}
-		return new TypeMappedAnnotations(element, searchStrategy, repeatableContainers, annotationFilter);
+		return new TypeMappedAnnotations(element, searchStrategy, searchEnclosingClass, repeatableContainers, annotationFilter);
 	}
 
 	static MergedAnnotations from(@Nullable Object source, Annotation[] annotations,
@@ -412,10 +418,13 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 			Annotation[] repeatedAnnotations = repeatableContainers.findRepeatedAnnotations(annotation);
 			if (repeatedAnnotations != null) {
-				return doWithAnnotations(type, aggregateIndex, source, repeatedAnnotations);
+				MergedAnnotation<A> result = doWithAnnotations(type, aggregateIndex, source, repeatedAnnotations);
+				if (result != null) {
+					return result;
+				}
 			}
 			AnnotationTypeMappings mappings = AnnotationTypeMappings.forAnnotationType(
-					annotation.annotationType(), annotationFilter);
+					annotation.annotationType(), repeatableContainers, annotationFilter);
 			for (int i = 0; i < mappings.size(); i++) {
 				AnnotationTypeMapping mapping = mappings.get(i);
 				if (isMappingForType(mapping, annotationFilter, this.requiredType)) {
@@ -510,8 +519,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 			this.annotations = annotations;
 			this.mappings = new AnnotationTypeMappings[annotations.size()];
 			for (int i = 0; i < annotations.size(); i++) {
-				this.mappings[i] = AnnotationTypeMappings.forAnnotationType(
-						annotations.get(i).annotationType());
+				this.mappings[i] = AnnotationTypeMappings.forAnnotationType(annotations.get(i).annotationType());
 			}
 		}
 
@@ -531,8 +539,8 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 
 		@Nullable
 		<A extends Annotation> MergedAnnotation<A> createMergedAnnotationIfPossible(
-				int annotationIndex, int mappingIndex,
-				IntrospectionFailureLogger logger) {
+				int annotationIndex, int mappingIndex, IntrospectionFailureLogger logger) {
+
 			return TypeMappedAnnotation.createIfPossible(
 					this.mappings[annotationIndex].get(mappingIndex), this.source,
 					this.annotations.get(annotationIndex), this.aggregateIndex, logger);
@@ -562,6 +570,7 @@ final class TypeMappedAnnotations implements MergedAnnotations {
 			this.aggregateCursor = 0;
 		}
 
+		@Override
 		public boolean tryAdvance(Consumer<? super MergedAnnotation<A>> action) {
 			while (this.aggregateCursor < this.aggregates.size()) {
 				Aggregate aggregate = this.aggregates.get(this.aggregateCursor);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,16 @@
 
 package org.springframework.aop.target;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.TargetSource;
 import org.springframework.beans.MutablePropertyValues;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.tests.sample.beans.SerializablePerson;
-import org.springframework.tests.sample.beans.TestBean;
-import org.springframework.util.SerializationTestUtils;
+import org.springframework.beans.testfixture.beans.SerializablePerson;
+import org.springframework.beans.testfixture.beans.TestBean;
+import org.springframework.core.testfixture.io.SerializationTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,10 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Rod Johnson
  * @author Chris Beams
  */
-public class PrototypeBasedTargetSourceTests {
+class PrototypeBasedTargetSourceTests {
 
 	@Test
-	public void testSerializability() throws Exception {
+	void testSerializability() throws Exception {
 		MutablePropertyValues tsPvs = new MutablePropertyValues();
 		tsPvs.add("targetBeanName", "person");
 		RootBeanDefinition tsBd = new RootBeanDefinition(TestTargetSource.class);
@@ -47,18 +48,16 @@ public class PrototypeBasedTargetSourceTests {
 		MutablePropertyValues pvs = new MutablePropertyValues();
 		RootBeanDefinition bd = new RootBeanDefinition(SerializablePerson.class);
 		bd.setPropertyValues(pvs);
-		bd.setScope(RootBeanDefinition.SCOPE_PROTOTYPE);
+		bd.setScope(BeanDefinition.SCOPE_PROTOTYPE);
 
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		bf.registerBeanDefinition("ts", tsBd);
 		bf.registerBeanDefinition("person", bd);
 
 		TestTargetSource cpts = (TestTargetSource) bf.getBean("ts");
-		TargetSource serialized = (TargetSource) SerializationTestUtils.serializeAndDeserialize(cpts);
-		boolean condition = serialized instanceof SingletonTargetSource;
-		assertThat(condition).as("Changed to SingletonTargetSource on deserialization").isTrue();
-		SingletonTargetSource sts = (SingletonTargetSource) serialized;
-		assertThat(sts.getTarget()).isNotNull();
+		TargetSource serialized = SerializationTestUtils.serializeAndDeserialize(cpts);
+		assertThat(serialized).isInstanceOfSatisfying(SingletonTargetSource.class,
+				sts -> assertThat(sts.getTarget()).isNotNull());
 	}
 
 
@@ -70,17 +69,12 @@ public class PrototypeBasedTargetSourceTests {
 		 * Nonserializable test field to check that subclass
 		 * state can't prevent serialization from working
 		 */
-		@SuppressWarnings("unused")
-		private TestBean thisFieldIsNotSerializable = new TestBean();
+		@SuppressWarnings({"unused", "serial"})
+		private final TestBean thisFieldIsNotSerializable = new TestBean();
 
 		@Override
-		public Object getTarget() throws Exception {
+		public Object getTarget() {
 			return newPrototypeInstance();
-		}
-
-		@Override
-		public void releaseTarget(Object target) throws Exception {
-			// Do nothing
 		}
 	}
 

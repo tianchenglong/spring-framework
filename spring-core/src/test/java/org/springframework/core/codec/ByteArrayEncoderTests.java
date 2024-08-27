@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@ package org.springframework.core.codec;
 
 import java.nio.charset.StandardCharsets;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.core.testfixture.codec.AbstractEncoderTests;
 import org.springframework.util.MimeTypeUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,20 +30,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Arjen Poutsma
  */
-public class ByteArrayEncoderTests extends AbstractEncoderTestCase<ByteArrayEncoder> {
+class ByteArrayEncoderTests extends AbstractEncoderTests<ByteArrayEncoder> {
 
 	private final byte[] fooBytes = "foo".getBytes(StandardCharsets.UTF_8);
 
 	private final byte[] barBytes = "bar".getBytes(StandardCharsets.UTF_8);
 
-	public ByteArrayEncoderTests() {
+	ByteArrayEncoderTests() {
 		super(new ByteArrayEncoder());
 	}
 
 
 	@Override
 	@Test
-	public void canEncode() {
+	protected void canEncode() {
 		assertThat(this.encoder.canEncode(ResolvableType.forClass(byte[].class),
 				MimeTypeUtils.TEXT_PLAIN)).isTrue();
 		assertThat(this.encoder.canEncode(ResolvableType.forClass(Integer.class),
@@ -55,7 +56,8 @@ public class ByteArrayEncoderTests extends AbstractEncoderTestCase<ByteArrayEnco
 	}
 
 	@Override
-	public void encode() {
+	@Test
+	protected void encode() {
 		Flux<byte[]> input = Flux.just(this.fooBytes, this.barBytes);
 
 		testEncodeAll(input, byte[].class, step -> step
@@ -63,4 +65,5 @@ public class ByteArrayEncoderTests extends AbstractEncoderTestCase<ByteArrayEnco
 				.consumeNextWith(expectBytes(this.barBytes))
 				.verifyComplete());
 	}
+
 }

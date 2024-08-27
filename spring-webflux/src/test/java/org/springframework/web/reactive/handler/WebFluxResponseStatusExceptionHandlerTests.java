@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +18,22 @@ package org.springframework.web.reactive.handler;
 
 import java.time.Duration;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.handler.ResponseStatusExceptionHandler;
-import org.springframework.web.server.handler.ResponseStatusExceptionHandlerTests;
+import org.springframework.web.testfixture.server.handler.AbstractResponseStatusExceptionHandlerTests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link WebFluxResponseStatusExceptionHandler}.
+ * Tests for {@link WebFluxResponseStatusExceptionHandler}.
  *
  * @author Juergen Hoeller
  * @author Rossen Stoyanchev
  */
-public class WebFluxResponseStatusExceptionHandlerTests extends ResponseStatusExceptionHandlerTests {
+class WebFluxResponseStatusExceptionHandlerTests extends AbstractResponseStatusExceptionHandlerTests {
 
 	@Override
 	protected ResponseStatusExceptionHandler createResponseStatusExceptionHandler() {
@@ -42,14 +42,14 @@ public class WebFluxResponseStatusExceptionHandlerTests extends ResponseStatusEx
 
 
 	@Test
-	public void handleAnnotatedException() {
+	void handleAnnotatedException() {
 		Throwable ex = new CustomException();
 		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
 		assertThat(this.exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.I_AM_A_TEAPOT);
 	}
 
 	@Test
-	public void handleNestedAnnotatedException() {
+	void handleNestedAnnotatedException() {
 		Throwable ex = new Exception(new CustomException());
 		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
 		assertThat(this.exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.I_AM_A_TEAPOT);

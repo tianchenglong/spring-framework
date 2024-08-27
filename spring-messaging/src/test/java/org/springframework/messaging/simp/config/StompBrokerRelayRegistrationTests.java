@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.messaging.simp.config;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.StubMessageChannel;
@@ -27,15 +27,14 @@ import org.springframework.util.StringUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for
- * {@link org.springframework.messaging.simp.config.StompBrokerRelayRegistration}.
+ * Tests for {@link StompBrokerRelayRegistration}.
  *
  * @author Rossen Stoyanchev
  */
-public class StompBrokerRelayRegistrationTests {
+class StompBrokerRelayRegistrationTests {
 
 	@Test
-	public void test() {
+	void test() {
 
 		SubscribableChannel inChannel = new StubMessageChannel();
 		MessageChannel outChannel = new StubMessageChannel();

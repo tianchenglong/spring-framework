@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,22 @@
 
 package org.springframework.core.codec;
 
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.core.log.LogFormatUtils;
 import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
 /**
- * Decode from a data buffer stream to a {@code String} stream. Before decoding, this decoder
- * realigns the incoming data buffers so that each buffer ends with a newline.
- * This is to make sure that multibyte characters are decoded properly, and do not cross buffer
- * boundaries. The default delimiters ({@code \n}, {@code \r\n})can be customized.
- *
- * <p>Partially inspired by Netty's {@code DelimiterBasedFrameDecoder}.
+ * Decode from a data buffer stream to a {@code String} stream, either splitting
+ * or aggregating incoming data chunks to realign along newlines delimiters
+ * and produce a stream of strings. This is useful for streaming but is also
+ * necessary to ensure that multi-byte characters can be decoded correctly,
+ * avoiding split-character issues. The default delimiters used by default are
+ * {@code \n} and {@code \r\n} but that can be customized.
  *
  * @author Sebastien Deleuze
  * @author Brian Clozel
@@ -53,27 +40,10 @@ import org.springframework.util.MimeTypeUtils;
  * @since 5.0
  * @see CharSequenceEncoder
  */
-public final class StringDecoder extends AbstractDataBufferDecoder<String> {
-
-	/** The default charset to use, i.e. "UTF-8". */
-	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
-
-	/** The default delimiter strings to use, i.e. {@code \r\n} and {@code \n}. */
-	public static final List<String> DEFAULT_DELIMITERS = Arrays.asList("\r\n", "\n");
-
-
-	private final List<String> delimiters;
-
-	private final boolean stripDelimiter;
-
-	private final ConcurrentMap<Charset, byte[][]> delimitersCache = new ConcurrentHashMap<>();
-
+public final class StringDecoder extends AbstractCharSequenceDecoder<String> {
 
 	private StringDecoder(List<String> delimiters, boolean stripDelimiter, MimeType... mimeTypes) {
-		super(mimeTypes);
-		Assert.notEmpty(delimiters, "'delimiters' must not be empty");
-		this.delimiters = new ArrayList<>(delimiters);
-		this.stripDelimiter = stripDelimiter;
+		super(delimiters, stripDelimiter, mimeTypes);
 	}
 
 
@@ -82,63 +52,12 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 		return (elementType.resolve() == String.class && super.canDecode(elementType, mimeType));
 	}
 
-	@Override
-	public Flux<String> decode(Publisher<DataBuffer> input, ResolvableType elementType,
-			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
-
-		byte[][] delimiterBytes = getDelimiterBytes(mimeType);
-
-		Flux<DataBuffer> inputFlux =
-				DataBufferUtils.split(input, delimiterBytes, this.stripDelimiter);
-
-		return super.decode(inputFlux, elementType, mimeType, hints);
-	}
-
-	private byte[][] getDelimiterBytes(@Nullable MimeType mimeType) {
-		return this.delimitersCache.computeIfAbsent(getCharset(mimeType), charset -> {
-			byte[][] result = new byte[this.delimiters.size()][];
-			for (int i = 0; i < this.delimiters.size(); i++) {
-				result[i] = this.delimiters.get(i).getBytes(charset);
-			}
-			return result;
-		});
-	}
 
 	@Override
-	public String decode(DataBuffer dataBuffer, ResolvableType elementType,
-			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
-
-		Charset charset = getCharset(mimeType);
-		CharBuffer charBuffer = charset.decode(dataBuffer.asByteBuffer());
-		DataBufferUtils.release(dataBuffer);
-		String value = charBuffer.toString();
-		LogFormatUtils.traceDebug(logger, traceOn -> {
-			String formatted = LogFormatUtils.formatValue(value, !traceOn);
-			return Hints.getLogPrefix(hints) + "Decoded " + formatted;
-		});
-		return value;
+	protected String decodeInternal(DataBuffer dataBuffer, Charset charset) {
+		return dataBuffer.toString(charset);
 	}
 
-	private static Charset getCharset(@Nullable MimeType mimeType) {
-		if (mimeType != null && mimeType.getCharset() != null) {
-			return mimeType.getCharset();
-		}
-		else {
-			return DEFAULT_CHARSET;
-		}
-	}
-
-
-	/**
-	 * Create a {@code StringDecoder} for {@code "text/plain"}.
-	 * @param ignored ignored
-	 * @deprecated as of Spring 5.0.4, in favor of {@link #textPlainOnly()} or
-	 * {@link #textPlainOnly(List, boolean)}
-	 */
-	@Deprecated
-	public static StringDecoder textPlainOnly(boolean ignored) {
-		return textPlainOnly();
-	}
 
 	/**
 	 * Create a {@code StringDecoder} for {@code "text/plain"}.
@@ -155,17 +74,6 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 	 */
 	public static StringDecoder textPlainOnly(List<String> delimiters, boolean stripDelimiter) {
 		return new StringDecoder(delimiters, stripDelimiter, new MimeType("text", "plain", DEFAULT_CHARSET));
-	}
-
-	/**
-	 * Create a {@code StringDecoder} that supports all MIME types.
-	 * @param ignored ignored
-	 * @deprecated as of Spring 5.0.4, in favor of {@link #allMimeTypes()} or
-	 * {@link #allMimeTypes(List, boolean)}
-	 */
-	@Deprecated
-	public static StringDecoder allMimeTypes(boolean ignored) {
-		return allMimeTypes();
 	}
 
 	/**

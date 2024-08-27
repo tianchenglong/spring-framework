@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.beans.support;
 
 import java.io.Serializable;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -154,17 +155,11 @@ public class MutableSortDefinition implements SortDefinition, Serializable {
 
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof SortDefinition)) {
-			return false;
-		}
-		SortDefinition otherSd = (SortDefinition) other;
-		return (getProperty().equals(otherSd.getProperty()) &&
-				isAscending() == otherSd.isAscending() &&
-				isIgnoreCase() == otherSd.isIgnoreCase());
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof SortDefinition that &&
+				getProperty().equals(that.getProperty()) &&
+				isAscending() == that.isAscending() &&
+				isIgnoreCase() == that.isIgnoreCase()));
 	}
 
 	@Override

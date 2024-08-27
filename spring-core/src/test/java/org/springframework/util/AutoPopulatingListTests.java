@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 
 package org.springframework.util;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 
-import org.junit.Test;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.junit.jupiter.api.Test;
 
+import org.springframework.core.testfixture.io.SerializationTestUtils;
 import org.springframework.tests.sample.objects.TestObject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,26 +30,26 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Rob Harrop
  * @author Juergen Hoeller
  */
-public class AutoPopulatingListTests {
+class AutoPopulatingListTests {
 
 	@Test
-	public void withClass() throws Exception {
+	void withClass() {
 		doTestWithClass(new AutoPopulatingList<>(TestObject.class));
 	}
 
 	@Test
-	public void withClassAndUserSuppliedBackingList() throws Exception {
-		doTestWithClass(new AutoPopulatingList<Object>(new LinkedList<>(), TestObject.class));
+	void withClassAndUserSuppliedBackingList() {
+		doTestWithClass(new AutoPopulatingList<>(new ArrayList<>(), TestObject.class));
 	}
 
 	@Test
-	public void withElementFactory() throws Exception {
+	void withElementFactory() {
 		doTestWithElementFactory(new AutoPopulatingList<>(new MockElementFactory()));
 	}
 
 	@Test
-	public void withElementFactoryAndUserSuppliedBackingList() throws Exception {
-		doTestWithElementFactory(new AutoPopulatingList<Object>(new LinkedList<>(), new MockElementFactory()));
+	void withElementFactoryAndUserSuppliedBackingList() {
+		doTestWithElementFactory(new AutoPopulatingList<>(new ArrayList<>(), new MockElementFactory()));
 	}
 
 	private void doTestWithClass(AutoPopulatingList<Object> list) {
@@ -64,7 +66,7 @@ public class AutoPopulatingListTests {
 		String helloWorld = "Hello World!";
 		list.add(10, null);
 		list.add(11, helloWorld);
-		assertThat(list.get(11)).isEqualTo(helloWorld);
+		assertThat(list).element(11, InstanceOfAssertFactories.STRING).isEqualTo(helloWorld);
 
 		boolean condition3 = list.get(10) instanceof TestObject;
 		assertThat(condition3).isTrue();
@@ -88,7 +90,7 @@ public class AutoPopulatingListTests {
 	}
 
 	@Test
-	public void serialization() throws Exception {
+	void serialization() throws Exception {
 		AutoPopulatingList<?> list = new AutoPopulatingList<Object>(TestObject.class);
 		assertThat(SerializationTestUtils.serializeAndDeserialize(list)).isEqualTo(list);
 	}

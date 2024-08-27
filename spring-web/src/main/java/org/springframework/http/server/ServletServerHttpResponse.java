@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -46,6 +49,9 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 
 	private boolean bodyUsed = false;
 
+	@Nullable
+	private HttpHeaders readOnlyHeaders;
+
 
 	/**
 	 * Construct a new instance of the ServletServerHttpResponse based on the given {@link HttpServletResponse}.
@@ -66,14 +72,23 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 	}
 
 	@Override
-	public void setStatusCode(HttpStatus status) {
-		Assert.notNull(status, "HttpStatus must not be null");
+	public void setStatusCode(HttpStatusCode status) {
+		Assert.notNull(status, "HttpStatusCode must not be null");
 		this.servletResponse.setStatus(status.value());
 	}
 
 	@Override
 	public HttpHeaders getHeaders() {
-		return (this.headersWritten ? HttpHeaders.readOnlyHttpHeaders(this.headers) : this.headers);
+		if (this.readOnlyHeaders != null) {
+			return this.readOnlyHeaders;
+		}
+		else if (this.headersWritten) {
+			this.readOnlyHeaders = HttpHeaders.readOnlyHttpHeaders(this.headers);
+			return this.readOnlyHeaders;
+		}
+		else {
+			return this.headers;
+		}
 	}
 
 	@Override
@@ -104,12 +119,17 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 				}
 			});
 			// HttpServletResponse exposes some headers as properties: we should include those if not already present
-			if (this.servletResponse.getContentType() == null && this.headers.getContentType() != null) {
-				this.servletResponse.setContentType(this.headers.getContentType().toString());
+			MediaType contentTypeHeader = this.headers.getContentType();
+			if (this.servletResponse.getContentType() == null && contentTypeHeader != null) {
+				this.servletResponse.setContentType(contentTypeHeader.toString());
 			}
-			if (this.servletResponse.getCharacterEncoding() == null && this.headers.getContentType() != null &&
-					this.headers.getContentType().getCharset() != null) {
-				this.servletResponse.setCharacterEncoding(this.headers.getContentType().getCharset().name());
+			if (this.servletResponse.getCharacterEncoding() == null && contentTypeHeader != null &&
+					contentTypeHeader.getCharset() != null) {
+				this.servletResponse.setCharacterEncoding(contentTypeHeader.getCharset().name());
+			}
+			long contentLength = getHeaders().getContentLength();
+			if (contentLength != -1) {
+				this.servletResponse.setContentLengthLong(contentLength);
 			}
 			this.headersWritten = true;
 		}
@@ -139,20 +159,30 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 		@Override
 		@Nullable
 		public String getFirst(String headerName) {
-			String value = servletResponse.getHeader(headerName);
-			if (value != null) {
-				return value;
+			if (headerName.equalsIgnoreCase(CONTENT_TYPE)) {
+				// Content-Type is written as an override so check super first
+				String value = super.getFirst(headerName);
+				return (value != null ? value : servletResponse.getContentType());
 			}
 			else {
-				return super.getFirst(headerName);
+				String value = servletResponse.getHeader(headerName);
+				return (value != null ? value : super.getFirst(headerName));
 			}
 		}
 
 		@Override
+		@Nullable
 		public List<String> get(Object key) {
 			Assert.isInstanceOf(String.class, key, "Key must be a String-based header name");
 
-			Collection<String> values1 = servletResponse.getHeaders((String) key);
+			String headerName = (String) key;
+			if (headerName.equalsIgnoreCase(CONTENT_TYPE)) {
+				// Content-Type is written as an override so don't merge
+				String value = getFirst(headerName);
+				return (value != null ? Collections.singletonList(value) : null);
+			}
+
+			Collection<String> values1 = servletResponse.getHeaders(headerName);
 			if (headersWritten) {
 				return new ArrayList<>(values1);
 			}

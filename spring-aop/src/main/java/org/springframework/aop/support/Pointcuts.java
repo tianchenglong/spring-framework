@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import org.springframework.util.Assert;
 /**
  * Pointcut constants for matching getters and setters,
  * and static methods useful for manipulating and evaluating pointcuts.
- * These methods are particularly useful for composing pointcuts
+ *
+ * <p>These methods are particularly useful for composing pointcuts
  * using the union and intersection methods.
  *
  * @author Rod Johnson
@@ -100,11 +101,16 @@ public abstract class Pointcuts {
 		public boolean matches(Method method, Class<?> targetClass) {
 			return (method.getName().startsWith("set") &&
 					method.getParameterCount() == 1 &&
-					method.getReturnType() == Void.TYPE);
+					method.getReturnType() == void.class);
 		}
 
 		private Object readResolve() {
 			return INSTANCE;
+		}
+
+		@Override
+		public String toString() {
+			return "Pointcuts.SETTERS";
 		}
 	}
 
@@ -120,11 +126,17 @@ public abstract class Pointcuts {
 		@Override
 		public boolean matches(Method method, Class<?> targetClass) {
 			return (method.getName().startsWith("get") &&
-					method.getParameterCount() == 0);
+					method.getParameterCount() == 0 &&
+					method.getReturnType() != void.class);
 		}
 
 		private Object readResolve() {
 			return INSTANCE;
+		}
+
+		@Override
+		public String toString() {
+			return "Pointcuts.GETTERS";
 		}
 	}
 

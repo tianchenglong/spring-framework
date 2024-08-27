@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package org.springframework.test.context.env;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +25,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.context.support.TestPropertySourceUtils.INLINED_PROPERTIES_PROPERTY_SOURCE_NAME;
@@ -36,48 +36,46 @@ import static org.springframework.test.context.support.TestPropertySourceUtils.I
  *
  * @author Sam Brannen
  * @since 4.1
+ * @see InlinedPropertiesWithTextBlockTestPropertySourceTests
  */
-@RunWith(SpringJUnit4ClassRunner.class)
+@ExtendWith(SpringExtension.class)
 @ContextConfiguration
 @TestPropertySource(properties = { "", "foo = bar", "baz quux", "enigma: 42", "x.y.z = a=b=c",
 	"server.url = https://example.com", "key.value.1: key=value", "key.value.2 key=value", "key.value.3 key:value" })
-public class InlinedPropertiesTestPropertySourceTests {
+class InlinedPropertiesTestPropertySourceTests {
 
 	@Autowired
-	private ConfigurableEnvironment env;
+	ConfigurableEnvironment env;
 
-
-	private String property(String key) {
-		return env.getProperty(key);
-	}
 
 	@Test
-	public void propertiesAreAvailableInEnvironment() {
+	void propertiesAreAvailableInEnvironment() {
 		// Simple key/value pairs
-		assertThat(property("foo")).isEqualTo("bar");
-		assertThat(property("baz")).isEqualTo("quux");
-		assertThat(property("enigma")).isEqualTo("42");
+		assertEnvironmentProperty("foo", "bar");
+		assertEnvironmentProperty("baz", "quux");
+		assertEnvironmentProperty("enigma", "42");
 
 		// Values containing key/value delimiters (":", "=", " ")
-		assertThat(property("x.y.z")).isEqualTo("a=b=c");
-		assertThat(property("server.url")).isEqualTo("https://example.com");
-		assertThat(property("key.value.1")).isEqualTo("key=value");
-		assertThat(property("key.value.2")).isEqualTo("key=value");
-		assertThat(property("key.value.3")).isEqualTo("key:value");
+		assertEnvironmentProperty("x.y.z", "a=b=c");
+		assertEnvironmentProperty("server.url", "https://example.com");
+		assertEnvironmentProperty("key.value.1", "key=value");
+		assertEnvironmentProperty("key.value.2", "key=value");
+		assertEnvironmentProperty("key.value.3", "key:value");
 	}
 
 	@Test
 	@SuppressWarnings("rawtypes")
-	public void propertyNameOrderingIsPreservedInEnvironment() {
-		final String[] expectedPropertyNames = new String[] { "foo", "baz", "enigma", "x.y.z", "server.url",
-			"key.value.1", "key.value.2", "key.value.3" };
+	void propertyNameOrderingIsPreservedInEnvironment() {
 		EnumerablePropertySource eps = (EnumerablePropertySource) env.getPropertySources().get(
 			INLINED_PROPERTIES_PROPERTY_SOURCE_NAME);
-		assertThat(eps.getPropertyNames()).isEqualTo(expectedPropertyNames);
+		assertThat(eps.getPropertyNames()).containsExactly("foo", "baz", "enigma", "x.y.z", "server.url",
+				"key.value.1", "key.value.2", "key.value.3" );
 	}
 
+	private void assertEnvironmentProperty(String name, Object value) {
+		assertThat(this.env.getProperty(name)).as("environment property '%s'", name).isEqualTo(value);
+	}
 
-	// -------------------------------------------------------------------
 
 	@Configuration
 	static class Config {

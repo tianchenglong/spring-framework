@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,11 @@ package org.springframework.web.method.annotation;
 import java.lang.reflect.Method;
 import java.util.Collections;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
+import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.format.support.DefaultFormattingConversionService;
-import org.springframework.mock.web.test.MockHttpServletRequest;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,6 +34,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolverComposite;
 import org.springframework.web.method.support.InvocableHandlerMethod;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  *
  * @author Rossen Stoyanchev
  */
-public class InitBinderDataBinderFactoryTests {
+class InitBinderDataBinderFactoryTests {
 
 	private final ConfigurableWebBindingInitializer bindingInitializer =
 			new ConfigurableWebBindingInitializer();
@@ -56,7 +56,7 @@ public class InitBinderDataBinderFactoryTests {
 
 
 	@Test
-	public void createBinder() throws Exception {
+	void createBinder() throws Exception {
 		WebDataBinderFactory factory = createFactory("initBinder", WebDataBinder.class);
 		WebDataBinder dataBinder = factory.createBinder(this.webRequest, null, null);
 
@@ -65,7 +65,7 @@ public class InitBinderDataBinderFactoryTests {
 	}
 
 	@Test
-	public void createBinderWithGlobalInitialization() throws Exception {
+	void createBinderWithGlobalInitialization() throws Exception {
 		ConversionService conversionService = new DefaultFormattingConversionService();
 		bindingInitializer.setConversionService(conversionService);
 
@@ -76,7 +76,7 @@ public class InitBinderDataBinderFactoryTests {
 	}
 
 	@Test
-	public void createBinderWithAttrName() throws Exception {
+	void createBinderWithAttrName() throws Exception {
 		WebDataBinderFactory factory = createFactory("initBinderWithAttributeName", WebDataBinder.class);
 		WebDataBinder dataBinder = factory.createBinder(this.webRequest, null, "foo");
 
@@ -85,7 +85,7 @@ public class InitBinderDataBinderFactoryTests {
 	}
 
 	@Test
-	public void createBinderWithAttrNameNoMatch() throws Exception {
+	void createBinderWithAttrNameNoMatch() throws Exception {
 		WebDataBinderFactory factory = createFactory("initBinderWithAttributeName", WebDataBinder.class);
 		WebDataBinder dataBinder = factory.createBinder(this.webRequest, null, "invalidName");
 
@@ -93,7 +93,7 @@ public class InitBinderDataBinderFactoryTests {
 	}
 
 	@Test
-	public void createBinderNullAttrName() throws Exception {
+	void createBinderNullAttrName() throws Exception {
 		WebDataBinderFactory factory = createFactory("initBinderWithAttributeName", WebDataBinder.class);
 		WebDataBinder dataBinder = factory.createBinder(this.webRequest, null, null);
 
@@ -101,14 +101,14 @@ public class InitBinderDataBinderFactoryTests {
 	}
 
 	@Test
-	public void returnValueNotExpected() throws Exception {
+	void returnValueNotExpected() throws Exception {
 		WebDataBinderFactory factory = createFactory("initBinderReturnValue", WebDataBinder.class);
 		assertThatIllegalStateException().isThrownBy(() ->
 				factory.createBinder(this.webRequest, null, "invalidName"));
 	}
 
 	@Test
-	public void createBinderTypeConversion() throws Exception {
+	void createBinderTypeConversion() throws Exception {
 		this.webRequest.getNativeRequest(MockHttpServletRequest.class).setParameter("requestParam", "22");
 		this.argumentResolvers.addResolver(new RequestParamMethodArgumentResolver(null, false));
 
@@ -116,7 +116,7 @@ public class InitBinderDataBinderFactoryTests {
 		WebDataBinder dataBinder = factory.createBinder(this.webRequest, null, "foo");
 
 		assertThat(dataBinder.getDisallowedFields()).isNotNull();
-		assertThat(dataBinder.getDisallowedFields()[0]).isEqualTo("requestParam-22");
+		assertThat(dataBinder.getDisallowedFields()[0]).isEqualToIgnoringCase("requestParam-22");
 	}
 
 	private WebDataBinderFactory createFactory(String methodName, Class<?>... parameterTypes)
@@ -128,7 +128,7 @@ public class InitBinderDataBinderFactoryTests {
 		InvocableHandlerMethod handlerMethod = new InvocableHandlerMethod(handler, method);
 		handlerMethod.setHandlerMethodArgumentResolvers(this.argumentResolvers);
 		handlerMethod.setDataBinderFactory(new DefaultDataBinderFactory(null));
-		handlerMethod.setParameterNameDiscoverer(new LocalVariableTableParameterNameDiscoverer());
+		handlerMethod.setParameterNameDiscoverer(new DefaultParameterNameDiscoverer());
 
 		return new InitBinderDataBinderFactory(
 				Collections.singletonList(handlerMethod), this.bindingInitializer);

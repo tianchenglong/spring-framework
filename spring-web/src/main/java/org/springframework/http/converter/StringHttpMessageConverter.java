@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import org.springframework.util.StreamUtils;
 /**
  * Implementation of {@link HttpMessageConverter} that can read and write strings.
  *
- * <p>By default, this converter supports all media types ({@code &#42;&#47;&#42;}),
+ * <p>By default, this converter supports all media types (<code>&#42;/&#42;</code>),
  * and writes with a {@code Content-Type} of {@code text/plain}. This can be overridden
  * by setting the {@link #setSupportedMediaTypes supportedMediaTypes} property.
  *
@@ -42,6 +42,8 @@ import org.springframework.util.StreamUtils;
  * @since 3.0
  */
 public class StringHttpMessageConverter extends AbstractHttpMessageConverter<String> {
+
+	private static final MediaType APPLICATION_PLUS_JSON = new MediaType("application", "*+json");
 
 	/**
 	 * The default charset used by the converter.
@@ -91,13 +93,29 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
 	@Override
 	protected String readInternal(Class<? extends String> clazz, HttpInputMessage inputMessage) throws IOException {
 		Charset charset = getContentTypeCharset(inputMessage.getHeaders().getContentType());
-		return StreamUtils.copyToString(inputMessage.getBody(), charset);
+		long length = inputMessage.getHeaders().getContentLength();
+		byte[] bytes = (length >= 0 && length <= Integer.MAX_VALUE ?
+				inputMessage.getBody().readNBytes((int) length) : inputMessage.getBody().readAllBytes());
+		return new String(bytes, charset);
 	}
 
 	@Override
 	protected Long getContentLength(String str, @Nullable MediaType contentType) {
 		Charset charset = getContentTypeCharset(contentType);
 		return (long) str.getBytes(charset).length;
+	}
+
+
+	@Override
+	protected void addDefaultHeaders(HttpHeaders headers, String s, @Nullable MediaType type) throws IOException {
+		if (headers.getContentType() == null ) {
+			if (type != null && type.isConcrete() && (type.isCompatibleWith(MediaType.APPLICATION_JSON) ||
+					type.isCompatibleWith(APPLICATION_PLUS_JSON))) {
+				// Prevent charset parameter for JSON.
+				headers.setContentType(type);
+			}
+		}
+		super.addDefaultHeaders(headers, s, type);
 	}
 
 	@Override
@@ -127,14 +145,25 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
 	}
 
 	private Charset getContentTypeCharset(@Nullable MediaType contentType) {
-		if (contentType != null && contentType.getCharset() != null) {
-			return contentType.getCharset();
+		if (contentType != null) {
+			Charset charset = contentType.getCharset();
+			if (charset != null) {
+				return charset;
+			}
+			else if (contentType.isCompatibleWith(MediaType.APPLICATION_JSON) ||
+					contentType.isCompatibleWith(APPLICATION_PLUS_JSON)) {
+				// Matching to AbstractJackson2HttpMessageConverter#DEFAULT_CHARSET
+				return StandardCharsets.UTF_8;
+			}
 		}
-		else {
-			Charset charset = getDefaultCharset();
-			Assert.state(charset != null, "No default charset");
-			return charset;
-		}
+		Charset charset = getDefaultCharset();
+		Assert.state(charset != null, "No default charset");
+		return charset;
+	}
+
+	@Override
+	protected boolean supportsRepeatableWrites(String s) {
+		return true;
 	}
 
 }

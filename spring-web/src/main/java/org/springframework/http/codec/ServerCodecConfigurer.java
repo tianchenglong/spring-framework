@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package org.springframework.http.codec;
 
 import org.springframework.core.codec.Encoder;
-import org.springframework.http.codec.multipart.Part;
 
 /**
  * Extension of {@link CodecConfigurer} for HTTP message reader and writer
@@ -63,6 +62,12 @@ public interface ServerCodecConfigurer extends CodecConfigurer {
 	@Override
 	ServerDefaultCodecs defaultCodecs();
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServerCodecConfigurer clone();
+
 
 	/**
 	 * Static factory method for a {@code ServerCodecConfigurer}.
@@ -73,28 +78,17 @@ public interface ServerCodecConfigurer extends CodecConfigurer {
 
 
 	/**
-	 * {@link CodecConfigurer.DefaultCodecs} extension with extra client-side options.
+	 * {@link CodecConfigurer.DefaultCodecs} extension with extra server-side options.
 	 */
 	interface ServerDefaultCodecs extends DefaultCodecs {
 
 		/**
 		 * Configure the {@code Encoder} to use for Server-Sent Events.
-		 * <p>By default if this is not set, and Jackson is available, the
-		 * {@link #jackson2JsonEncoder} override is used instead. Use this method
-		 * to customize the SSE encoder.
+		 * <p>By default if this is not set, and Jackson is available,
+		 * the {@link #jackson2JsonEncoder} override is used instead.
+		 * Use this method to customize the SSE encoder.
 		 */
 		void serverSentEventEncoder(Encoder<?> encoder);
-
-		/**
-		 * Configure the {@code HttpMessageReader} to use for multipart messages
-		 * (i.e. file uploads).
-		 * <p>By default if this is not set, the
-		 * {@link org.springframework.http.codec.multipart.DefaultMultipartMessageReader} is used.
-		 * Use this method to customize the multipart reader, for instance to use
-		 * {@link org.springframework.http.codec.multipart.SynchronossPartHttpMessageReader}
-		 * instead.
-		 */
-		void multipartReader(HttpMessageReader<Part> multipartReader);
 	}
 
 }

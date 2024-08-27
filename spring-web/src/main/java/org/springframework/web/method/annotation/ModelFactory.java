@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.Conventions;
 import org.springframework.core.GenericTypeResolver;
@@ -34,7 +37,6 @@ import org.springframework.ui.ModelMap;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.HttpSessionRequiredException;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -57,6 +59,9 @@ import org.springframework.web.method.support.ModelAndViewContainer;
  * @since 3.1
  */
 public final class ModelFactory {
+
+	private static final Log logger = LogFactory.getLog(ModelFactory.class);
+
 
 	private final List<ModelMethod> modelMethods = new ArrayList<>();
 
@@ -109,7 +114,7 @@ public final class ModelFactory {
 			if (!container.containsAttribute(name)) {
 				Object value = this.sessionAttributesHandler.retrieveAttribute(request, name);
 				if (value == null) {
-					throw new HttpSessionRequiredException("Expected session attribute '" + name + "'", name);
+					throw new IllegalStateException("Expected session attribute '" + name + "'");
 				}
 				container.addAttribute(name, value);
 			}
@@ -135,14 +140,22 @@ public final class ModelFactory {
 			}
 
 			Object returnValue = modelMethod.invokeForRequest(request, container);
-			if (!modelMethod.isVoid()){
-				String returnValueName = getNameForReturnValue(returnValue, modelMethod.getReturnType());
-				if (!ann.binding()) {
-					container.setBindingDisabled(returnValueName);
+			if (modelMethod.isVoid()) {
+				if (StringUtils.hasText(ann.value())) {
+					if (logger.isDebugEnabled()) {
+						logger.debug("Name in @ModelAttribute is ignored because method returns void: " +
+								modelMethod.getShortLogMessage());
+					}
 				}
-				if (!container.containsAttribute(returnValueName)) {
-					container.addAttribute(returnValueName, returnValue);
-				}
+				continue;
+			}
+
+			String returnValueName = getNameForReturnValue(returnValue, modelMethod.getReturnType());
+			if (!ann.binding()) {
+				container.setBindingDisabled(returnValueName);
+			}
+			if (!container.containsAttribute(returnValueName)) {
+				container.addAttribute(returnValueName, returnValue);
 			}
 		}
 	}
@@ -220,11 +233,9 @@ public final class ModelFactory {
 		if (attributeName.startsWith(BindingResult.MODEL_KEY_PREFIX)) {
 			return false;
 		}
-
 		if (this.sessionAttributesHandler.isHandlerSessionAttribute(attributeName, value.getClass())) {
 			return true;
 		}
-
 		return (!value.getClass().isArray() && !(value instanceof Collection) &&
 				!(value instanceof Map) && !BeanUtils.isSimpleValueType(value.getClass()));
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,22 @@
 
 package org.springframework.aop.target;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.sample.beans.SideEffectBean;
+import org.springframework.beans.testfixture.beans.ITestBean;
+import org.springframework.beans.testfixture.beans.SideEffectBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.tests.TestResourceUtils.qualifiedResource;
+import static org.springframework.core.testfixture.io.ResourceTestUtils.qualifiedResource;
 
 /**
  * @author Rod Johnson
  * @author Chris Beams
  */
-public class ThreadLocalTargetSourceTests {
+class ThreadLocalTargetSourceTests {
 
 	/** Initial count value set in bean factory XML */
 	private static final int INITIAL_COUNT = 10;
@@ -39,7 +39,7 @@ public class ThreadLocalTargetSourceTests {
 	private DefaultListableBeanFactory beanFactory;
 
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		this.beanFactory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(this.beanFactory).loadBeanDefinitions(
@@ -60,7 +60,7 @@ public class ThreadLocalTargetSourceTests {
 	 * with one another.
 	 */
 	@Test
-	public void testUseDifferentManagedInstancesInSameThread() {
+	void testUseDifferentManagedInstancesInSameThread() {
 		SideEffectBean apartment = (SideEffectBean) beanFactory.getBean("apartment");
 		assertThat(apartment.getCount()).isEqualTo(INITIAL_COUNT);
 		apartment.doWork();
@@ -72,7 +72,7 @@ public class ThreadLocalTargetSourceTests {
 	}
 
 	@Test
-	public void testReuseInSameThread() {
+	void testReuseInSameThread() {
 		SideEffectBean apartment = (SideEffectBean) beanFactory.getBean("apartment");
 		assertThat(apartment.getCount()).isEqualTo(INITIAL_COUNT);
 		apartment.doWork();
@@ -86,7 +86,7 @@ public class ThreadLocalTargetSourceTests {
 	 * Relies on introduction.
 	 */
 	@Test
-	public void testCanGetStatsViaMixin() {
+	void testCanGetStatsViaMixin() {
 		ThreadLocalTargetSourceStats stats = (ThreadLocalTargetSourceStats) beanFactory.getBean("apartment");
 		// +1 because creating target for stats call counts
 		assertThat(stats.getInvocationCount()).isEqualTo(1);
@@ -104,7 +104,7 @@ public class ThreadLocalTargetSourceTests {
 	}
 
 	@Test
-	public void testNewThreadHasOwnInstance() throws InterruptedException {
+	void testNewThreadHasOwnInstance() throws InterruptedException {
 		SideEffectBean apartment = (SideEffectBean) beanFactory.getBean("apartment");
 		assertThat(apartment.getCount()).isEqualTo(INITIAL_COUNT);
 		apartment.doWork();
@@ -144,7 +144,7 @@ public class ThreadLocalTargetSourceTests {
 	 * Test for SPR-1442. Destroyed target should re-associated with thread and not throw NPE.
 	 */
 	@Test
-	public void testReuseDestroyedTarget() {
+	void testReuseDestroyedTarget() {
 		ThreadLocalTargetSource source = (ThreadLocalTargetSource)this.beanFactory.getBean("threadLocalTs");
 
 		// try first time

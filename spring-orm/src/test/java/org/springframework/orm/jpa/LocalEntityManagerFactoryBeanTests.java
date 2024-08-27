@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ package org.springframework.orm.jpa;
 
 import java.util.Map;
 import java.util.Properties;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.spi.PersistenceProvider;
-import javax.persistence.spi.PersistenceUnitInfo;
-import javax.persistence.spi.ProviderUtil;
 
-import org.junit.After;
-import org.junit.Test;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.spi.PersistenceProvider;
+import jakarta.persistence.spi.PersistenceUnitInfo;
+import jakarta.persistence.spi.ProviderUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.verify;
  * @author Phillip Webb
  */
 @SuppressWarnings("rawtypes")
-public class LocalEntityManagerFactoryBeanTests extends AbstractEntityManagerFactoryBeanTests {
+class LocalEntityManagerFactoryBeanTests extends AbstractEntityManagerFactoryBeanTests {
 
 	// Static fields set by inner class DummyPersistenceProvider
 
@@ -42,22 +42,23 @@ public class LocalEntityManagerFactoryBeanTests extends AbstractEntityManagerFac
 
 	private static Map actualProps;
 
-	@After
-	public void verifyClosed() throws Exception {
+	@AfterEach
+	void verifyClosed() {
 		verify(mockEmf).close();
 	}
 
 	@Test
-	public void testValidUsageWithDefaultProperties() throws Exception {
+	void testValidUsageWithDefaultProperties() throws Exception {
 		testValidUsage(null);
 	}
 
 	@Test
-	public void testValidUsageWithExplicitProperties() throws Exception {
+	void testValidUsageWithExplicitProperties() throws Exception {
 		testValidUsage(new Properties());
 	}
 
-	protected void testValidUsage(Properties props) throws Exception {
+	@SuppressWarnings("unchecked")
+	protected void testValidUsage(Properties props) {
 		// This will be set by DummyPersistenceProvider
 		actualName = null;
 		actualProps = null;
@@ -74,7 +75,7 @@ public class LocalEntityManagerFactoryBeanTests extends AbstractEntityManagerFac
 
 		assertThat(actualName).isSameAs(entityManagerName);
 		if (props != null) {
-			assertThat((Object) actualProps).isEqualTo(props);
+			assertThat(actualProps).isEqualTo(props);
 		}
 		checkInvariants(lemfb);
 
@@ -102,11 +103,13 @@ public class LocalEntityManagerFactoryBeanTests extends AbstractEntityManagerFac
 		}
 
 		// JPA 2.1 method
+		@Override
 		public void generateSchema(PersistenceUnitInfo persistenceUnitInfo, Map map) {
 			throw new UnsupportedOperationException();
 		}
 
 		// JPA 2.1 method
+		@Override
 		public boolean generateSchema(String persistenceUnitName, Map map) {
 			throw new UnsupportedOperationException();
 		}

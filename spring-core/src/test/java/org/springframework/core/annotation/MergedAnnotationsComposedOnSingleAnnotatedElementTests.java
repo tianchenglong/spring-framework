@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
 import org.springframework.util.ReflectionUtils;
@@ -41,22 +41,22 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Phillip Webb
  * @author Sam Brannen
  */
-public class MergedAnnotationsComposedOnSingleAnnotatedElementTests {
+class MergedAnnotationsComposedOnSingleAnnotatedElementTests {
 
 	// See SPR-13486
 
 	@Test
-	public void inheritedStrategyMultipleComposedAnnotationsOnClass() {
+	void inheritedStrategyMultipleComposedAnnotationsOnClass() {
 		assertInheritedStrategyBehavior(MultipleComposedCachesClass.class);
 	}
 
 	@Test
-	public void inheritedStrategyMultipleInheritedComposedAnnotationsOnSuperclass() {
+	void inheritedStrategyMultipleInheritedComposedAnnotationsOnSuperclass() {
 		assertInheritedStrategyBehavior(SubMultipleComposedCachesClass.class);
 	}
 
 	@Test
-	public void inheritedStrategyMultipleNoninheritedComposedAnnotationsOnClass() {
+	void inheritedStrategyMultipleNoninheritedComposedAnnotationsOnClass() {
 		MergedAnnotations annotations = MergedAnnotations.from(
 				MultipleNoninheritedComposedCachesClass.class,
 				SearchStrategy.INHERITED_ANNOTATIONS);
@@ -65,7 +65,7 @@ public class MergedAnnotationsComposedOnSingleAnnotatedElementTests {
 	}
 
 	@Test
-	public void inheritedStrategyMultipleNoninheritedComposedAnnotationsOnSuperclass() {
+	void inheritedStrategyMultipleNoninheritedComposedAnnotationsOnSuperclass() {
 		MergedAnnotations annotations = MergedAnnotations.from(
 				SubMultipleNoninheritedComposedCachesClass.class,
 				SearchStrategy.INHERITED_ANNOTATIONS);
@@ -73,12 +73,12 @@ public class MergedAnnotationsComposedOnSingleAnnotatedElementTests {
 	}
 
 	@Test
-	public void inheritedStrategyComposedPlusLocalAnnotationsOnClass() {
+	void inheritedStrategyComposedPlusLocalAnnotationsOnClass() {
 		assertInheritedStrategyBehavior(ComposedPlusLocalCachesClass.class);
 	}
 
 	@Test
-	public void inheritedStrategyMultipleComposedAnnotationsOnInterface() {
+	void inheritedStrategyMultipleComposedAnnotationsOnInterface() {
 		MergedAnnotations annotations = MergedAnnotations.from(
 				MultipleComposedCachesOnInterfaceClass.class,
 				SearchStrategy.INHERITED_ANNOTATIONS);
@@ -86,13 +86,13 @@ public class MergedAnnotationsComposedOnSingleAnnotatedElementTests {
 	}
 
 	@Test
-	public void inheritedStrategyMultipleComposedAnnotationsOnMethod() throws Exception {
+	void inheritedStrategyMultipleComposedAnnotationsOnMethod() throws Exception {
 		assertInheritedStrategyBehavior(
 				getClass().getDeclaredMethod("multipleComposedCachesMethod"));
 	}
 
 	@Test
-	public void inheritedStrategyComposedPlusLocalAnnotationsOnMethod() throws Exception {
+	void inheritedStrategyComposedPlusLocalAnnotationsOnMethod() throws Exception {
 		assertInheritedStrategyBehavior(
 				getClass().getDeclaredMethod("composedPlusLocalCachesMethod"));
 	}
@@ -105,84 +105,81 @@ public class MergedAnnotationsComposedOnSingleAnnotatedElementTests {
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleComposedAnnotationsOnClass() {
-		assertExhaustiveStrategyBehavior(MultipleComposedCachesClass.class);
+	void typeHierarchyStrategyMultipleComposedAnnotationsOnClass() {
+		assertTypeHierarchyStrategyBehavior(MultipleComposedCachesClass.class);
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleInheritedComposedAnnotationsOnSuperclass() {
-		assertExhaustiveStrategyBehavior(SubMultipleComposedCachesClass.class);
+	void typeHierarchyStrategyMultipleInheritedComposedAnnotationsOnSuperclass() {
+		assertTypeHierarchyStrategyBehavior(SubMultipleComposedCachesClass.class);
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleNoninheritedComposedAnnotationsOnClass() {
+	void typeHierarchyStrategyMultipleNoninheritedComposedAnnotationsOnClass() {
 		MergedAnnotations annotations = MergedAnnotations.from(
-				MultipleNoninheritedComposedCachesClass.class, SearchStrategy.EXHAUSTIVE);
+				MultipleNoninheritedComposedCachesClass.class, SearchStrategy.TYPE_HIERARCHY);
 		assertThat(stream(annotations, "value")).containsExactly("noninheritedCache1",
 				"noninheritedCache2");
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleNoninheritedComposedAnnotationsOnSuperclass() {
+	void typeHierarchyStrategyMultipleNoninheritedComposedAnnotationsOnSuperclass() {
 		MergedAnnotations annotations = MergedAnnotations.from(
 				SubMultipleNoninheritedComposedCachesClass.class,
-				SearchStrategy.EXHAUSTIVE);
+				SearchStrategy.TYPE_HIERARCHY);
 		assertThat(stream(annotations, "value")).containsExactly("noninheritedCache1",
 				"noninheritedCache2");
 	}
 
 	@Test
-	public void exhaustiveStrategyComposedPlusLocalAnnotationsOnClass() {
-		assertExhaustiveStrategyBehavior(ComposedPlusLocalCachesClass.class);
+	void typeHierarchyStrategyComposedPlusLocalAnnotationsOnClass() {
+		assertTypeHierarchyStrategyBehavior(ComposedPlusLocalCachesClass.class);
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleComposedAnnotationsOnInterface() {
-		assertExhaustiveStrategyBehavior(MultipleComposedCachesOnInterfaceClass.class);
+	void typeHierarchyStrategyMultipleComposedAnnotationsOnInterface() {
+		assertTypeHierarchyStrategyBehavior(MultipleComposedCachesOnInterfaceClass.class);
 	}
 
 	@Test
-	public void exhaustiveStrategyComposedCacheOnInterfaceAndLocalCacheOnClass() {
-		assertExhaustiveStrategyBehavior(
+	void typeHierarchyStrategyComposedCacheOnInterfaceAndLocalCacheOnClass() {
+		assertTypeHierarchyStrategyBehavior(
 				ComposedCacheOnInterfaceAndLocalCacheClass.class);
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleComposedAnnotationsOnMethod() throws Exception {
-		assertExhaustiveStrategyBehavior(
+	void typeHierarchyStrategyMultipleComposedAnnotationsOnMethod() throws Exception {
+		assertTypeHierarchyStrategyBehavior(
 				getClass().getDeclaredMethod("multipleComposedCachesMethod"));
 	}
 
 	@Test
-	public void exhaustiveStrategyComposedPlusLocalAnnotationsOnMethod()
+	void typeHierarchyStrategyComposedPlusLocalAnnotationsOnMethod()
 			throws Exception {
-		assertExhaustiveStrategyBehavior(
+		assertTypeHierarchyStrategyBehavior(
 				getClass().getDeclaredMethod("composedPlusLocalCachesMethod"));
 	}
 
 	@Test
-	public void exhaustiveStrategyMultipleComposedAnnotationsOnBridgeMethod()
-			throws Exception {
-		assertExhaustiveStrategyBehavior(getBridgeMethod());
+	void typeHierarchyStrategyMultipleComposedAnnotationsOnBridgeMethod() {
+		assertTypeHierarchyStrategyBehavior(getBridgeMethod());
 	}
 
-	private void assertExhaustiveStrategyBehavior(AnnotatedElement element) {
+	private void assertTypeHierarchyStrategyBehavior(AnnotatedElement element) {
 		MergedAnnotations annotations = MergedAnnotations.from(element,
-				SearchStrategy.EXHAUSTIVE);
+				SearchStrategy.TYPE_HIERARCHY);
 		assertThat(stream(annotations, "key")).containsExactly("fooKey", "barKey");
 		assertThat(stream(annotations, "value")).containsExactly("fooCache", "barCache");
 	}
 
-	public Method getBridgeMethod() throws NoSuchMethodException {
+	Method getBridgeMethod() {
 		List<Method> methods = new ArrayList<>();
 		ReflectionUtils.doWithLocalMethods(StringGenericParameter.class, method -> {
 			if ("getFor".equals(method.getName())) {
 				methods.add(method);
 			}
 		});
-		Method bridgeMethod = methods.get(0).getReturnType().equals(Object.class)
-				? methods.get(0)
-				: methods.get(1);
+		Method bridgeMethod = methods.get(0).getReturnType() == Object.class ? methods.get(0) : methods.get(1);
 		assertThat(bridgeMethod.isBridge()).isTrue();
 		return bridgeMethod;
 	}

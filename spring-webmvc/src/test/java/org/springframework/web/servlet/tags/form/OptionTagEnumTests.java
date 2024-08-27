@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@
 
 package org.springframework.web.servlet.tags.form;
 
-import javax.servlet.jsp.tagext.BodyTag;
-import javax.servlet.jsp.tagext.Tag;
+import jakarta.servlet.jsp.tagext.BodyTag;
+import jakarta.servlet.jsp.tagext.Tag;
+import org.junit.jupiter.api.Test;
 
-import org.junit.Test;
-
-import org.springframework.tests.sample.beans.CustomEnum;
-import org.springframework.tests.sample.beans.GenericBean;
+import org.springframework.beans.testfixture.beans.CustomEnum;
+import org.springframework.beans.testfixture.beans.GenericBean;
 import org.springframework.web.servlet.support.BindStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,14 +29,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Juergen Hoeller
  */
-public class OptionTagEnumTests extends AbstractHtmlElementTagTests {
+class OptionTagEnumTests extends AbstractHtmlElementTagTests {
 
 	private OptionTag tag;
 
 	private SelectTag parentTag;
 
 	@Override
-	@SuppressWarnings("serial")
 	protected void onSetUp() {
 		this.tag = new OptionTag() {
 			@Override
@@ -83,11 +81,11 @@ public class OptionTagEnumTests extends AbstractHtmlElementTagTests {
 	}
 
 	private void assertOptionTagOpened(String output) {
-		assertThat(output.startsWith("<option")).isTrue();
+		assertThat(output).startsWith("<option");
 	}
 
 	private void assertOptionTagClosed(String output) {
-		assertThat(output.endsWith("</option>")).isTrue();
+		assertThat(output).endsWith("</option>");
 	}
 
 }

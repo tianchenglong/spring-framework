@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.core.convert.ConverterNotFoundException;
@@ -38,22 +38,22 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * @author Keith Donald
- * @author Phil Webb
+ * @author Phillip Webb
  * @author Juergen Hoeller
  */
-public class MapToMapConverterTests {
+class MapToMapConverterTests {
 
 	private final GenericConversionService conversionService = new GenericConversionService();
 
 
-	@Before
-	public void setUp() {
+	@BeforeEach
+	void setup() {
 		conversionService.addConverter(new MapToMapConverter(conversionService));
 	}
 
 
 	@Test
-	public void scalarMap() throws Exception {
+	void scalarMap() throws Exception {
 		Map<String, String> map = new HashMap<>();
 		map.put("1", "9");
 		map.put("2", "37");
@@ -65,20 +65,20 @@ public class MapToMapConverterTests {
 			conversionService.convert(map, sourceType, targetType);
 		}
 		catch (ConversionFailedException ex) {
-			assertThat(ex.getCause() instanceof ConverterNotFoundException).isTrue();
+			assertThat(ex.getCause()).isInstanceOf(ConverterNotFoundException.class);
 		}
 
 		conversionService.addConverterFactory(new StringToNumberConverterFactory());
 		assertThat(conversionService.canConvert(sourceType, targetType)).isTrue();
 		@SuppressWarnings("unchecked")
 		Map<Integer, Integer> result = (Map<Integer, Integer>) conversionService.convert(map, sourceType, targetType);
-		assertThat(map.equals(result)).isFalse();
+		assertThat(map).isNotEqualTo(result);
 		assertThat((int) result.get(1)).isEqualTo(9);
 		assertThat((int) result.get(2)).isEqualTo(37);
 	}
 
 	@Test
-	public void scalarMapNotGenericTarget() throws Exception {
+	void scalarMapNotGenericTarget() {
 		Map<String, String> map = new HashMap<>();
 		map.put("1", "9");
 		map.put("2", "37");
@@ -88,7 +88,7 @@ public class MapToMapConverterTests {
 	}
 
 	@Test
-	public void scalarMapNotGenericSourceField() throws Exception {
+	void scalarMapNotGenericSourceField() throws Exception {
 		Map<String, String> map = new HashMap<>();
 		map.put("1", "9");
 		map.put("2", "37");
@@ -100,20 +100,20 @@ public class MapToMapConverterTests {
 			conversionService.convert(map, sourceType, targetType);
 		}
 		catch (ConversionFailedException ex) {
-			assertThat(ex.getCause() instanceof ConverterNotFoundException).isTrue();
+			assertThat(ex.getCause()).isInstanceOf(ConverterNotFoundException.class);
 		}
 
 		conversionService.addConverterFactory(new StringToNumberConverterFactory());
 		assertThat(conversionService.canConvert(sourceType, targetType)).isTrue();
 		@SuppressWarnings("unchecked")
 		Map<Integer, Integer> result = (Map<Integer, Integer>) conversionService.convert(map, sourceType, targetType);
-		assertThat(map.equals(result)).isFalse();
+		assertThat(map).isNotEqualTo(result);
 		assertThat((int) result.get(1)).isEqualTo(9);
 		assertThat((int) result.get(2)).isEqualTo(37);
 	}
 
 	@Test
-	public void collectionMap() throws Exception {
+	void collectionMap() throws Exception {
 		Map<String, List<String>> map = new HashMap<>();
 		map.put("1", Arrays.asList("9", "12"));
 		map.put("2", Arrays.asList("37", "23"));
@@ -125,7 +125,7 @@ public class MapToMapConverterTests {
 			conversionService.convert(map, sourceType, targetType);
 		}
 		catch (ConversionFailedException ex) {
-			assertThat(ex.getCause() instanceof ConverterNotFoundException).isTrue();
+			assertThat(ex.getCause()).isInstanceOf(ConverterNotFoundException.class);
 		}
 
 		conversionService.addConverter(new CollectionToCollectionConverter(conversionService));
@@ -133,13 +133,13 @@ public class MapToMapConverterTests {
 		assertThat(conversionService.canConvert(sourceType, targetType)).isTrue();
 		@SuppressWarnings("unchecked")
 		Map<Integer, List<Integer>> result = (Map<Integer, List<Integer>>) conversionService.convert(map, sourceType, targetType);
-		assertThat(map.equals(result)).isFalse();
+		assertThat(map).isNotEqualTo(result);
 		assertThat(result.get(1)).isEqualTo(Arrays.asList(9, 12));
 		assertThat(result.get(2)).isEqualTo(Arrays.asList(37, 23));
 	}
 
 	@Test
-	public void collectionMapSourceTarget() throws Exception {
+	void collectionMapSourceTarget() throws Exception {
 		Map<String, List<String>> map = new HashMap<>();
 		map.put("1", Arrays.asList("9", "12"));
 		map.put("2", Arrays.asList("37", "23"));
@@ -155,13 +155,13 @@ public class MapToMapConverterTests {
 		assertThat(conversionService.canConvert(sourceType, targetType)).isTrue();
 		@SuppressWarnings("unchecked")
 		Map<Integer, List<Integer>> result = (Map<Integer, List<Integer>>) conversionService.convert(map, sourceType, targetType);
-		assertThat(map.equals(result)).isFalse();
+		assertThat(map).isNotEqualTo(result);
 		assertThat(result.get(1)).isEqualTo(Arrays.asList(9, 12));
 		assertThat(result.get(2)).isEqualTo(Arrays.asList(37, 23));
 	}
 
 	@Test
-	public void collectionMapNotGenericTarget() throws Exception {
+	void collectionMapNotGenericTarget() {
 		Map<String, List<String>> map = new HashMap<>();
 		map.put("1", Arrays.asList("9", "12"));
 		map.put("2", Arrays.asList("37", "23"));
@@ -171,7 +171,7 @@ public class MapToMapConverterTests {
 	}
 
 	@Test
-	public void collectionMapNotGenericTargetCollectionToObjectInteraction() throws Exception {
+	void collectionMapNotGenericTargetCollectionToObjectInteraction() {
 		Map<String, List<String>> map = new HashMap<>();
 		map.put("1", Arrays.asList("9", "12"));
 		map.put("2", Arrays.asList("37", "23"));
@@ -183,7 +183,7 @@ public class MapToMapConverterTests {
 	}
 
 	@Test
-	public void emptyMap() throws Exception {
+	void emptyMap() throws Exception {
 		Map<String, String> map = new HashMap<>();
 		TypeDescriptor sourceType = TypeDescriptor.forObject(map);
 		TypeDescriptor targetType = new TypeDescriptor(getClass().getField("emptyMapTarget"));
@@ -193,7 +193,7 @@ public class MapToMapConverterTests {
 	}
 
 	@Test
-	public void emptyMapNoTargetGenericInfo() throws Exception {
+	void emptyMapNoTargetGenericInfo() {
 		Map<String, String> map = new HashMap<>();
 
 		assertThat(conversionService.canConvert(Map.class, Map.class)).isTrue();
@@ -201,7 +201,7 @@ public class MapToMapConverterTests {
 	}
 
 	@Test
-	public void emptyMapDifferentTargetImplType() throws Exception {
+	void emptyMapDifferentTargetImplType() throws Exception {
 		Map<String, String> map = new HashMap<>();
 		TypeDescriptor sourceType = TypeDescriptor.forObject(map);
 		TypeDescriptor targetType = new TypeDescriptor(getClass().getField("emptyMapDifferentTarget"));
@@ -214,7 +214,7 @@ public class MapToMapConverterTests {
 	}
 
 	@Test
-	public void noDefaultConstructorCopyNotRequired() throws Exception {
+	void noDefaultConstructorCopyNotRequired() {
 		// SPR-9284
 		NoDefaultConstructorMap<String, Integer> map = new NoDefaultConstructorMap<>(
 				Collections.<String, Integer>singletonMap("1", 1));
@@ -232,7 +232,7 @@ public class MapToMapConverterTests {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void multiValueMapToMultiValueMap() throws Exception {
+	void multiValueMapToMultiValueMap() throws Exception {
 		DefaultConversionService.addDefaultConverters(conversionService);
 		MultiValueMap<String, Integer> source = new LinkedMultiValueMap<>();
 		source.put("a", Arrays.asList(1, 2, 3));
@@ -240,14 +240,14 @@ public class MapToMapConverterTests {
 		TypeDescriptor targetType = new TypeDescriptor(getClass().getField("multiValueMapTarget"));
 
 		MultiValueMap<String, String> converted = (MultiValueMap<String, String>) conversionService.convert(source, targetType);
-		assertThat(converted.size()).isEqualTo(2);
+		assertThat(converted).hasSize(2);
 		assertThat(converted.get("a")).isEqualTo(Arrays.asList("1", "2", "3"));
 		assertThat(converted.get("b")).isEqualTo(Arrays.asList("4", "5", "6"));
 	}
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void mapToMultiValueMap() throws Exception {
+	void mapToMultiValueMap() throws Exception {
 		DefaultConversionService.addDefaultConverters(conversionService);
 		Map<String, Integer> source = new HashMap<>();
 		source.put("a", 1);
@@ -255,13 +255,13 @@ public class MapToMapConverterTests {
 		TypeDescriptor targetType = new TypeDescriptor(getClass().getField("multiValueMapTarget"));
 
 		MultiValueMap<String, String> converted = (MultiValueMap<String, String>) conversionService.convert(source, targetType);
-		assertThat(converted.size()).isEqualTo(2);
-		assertThat(converted.get("a")).isEqualTo(Arrays.asList("1"));
-		assertThat(converted.get("b")).isEqualTo(Arrays.asList("2"));
+		assertThat(converted).hasSize(2);
+		assertThat(converted.get("a")).isEqualTo(List.of("1"));
+		assertThat(converted.get("b")).isEqualTo(List.of("2"));
 	}
 
 	@Test
-	public void testStringToEnumMap() throws Exception {
+	void stringToEnumMap() throws Exception {
 		conversionService.addConverterFactory(new StringToEnumConverterFactory());
 		Map<String, Integer> source = new HashMap<>();
 		source.put("A", 1);

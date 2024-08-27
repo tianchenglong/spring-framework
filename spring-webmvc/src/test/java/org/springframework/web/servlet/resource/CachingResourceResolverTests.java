@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,28 +16,29 @@
 
 package org.springframework.web.servlet.resource;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.mock.web.test.MockHttpServletRequest;
+import org.springframework.web.servlet.resource.GzipSupport.GzippedFiles;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for
- * {@link org.springframework.web.servlet.resource.CachingResourceResolver}.
+ * Tests for {@link CachingResourceResolver}.
  *
  * @author Rossen Stoyanchev
  */
+@ExtendWith(GzipSupport.class)
 public class CachingResourceResolverTests {
 
 	private Cache cache;
@@ -47,8 +48,8 @@ public class CachingResourceResolverTests {
 	private List<Resource> locations;
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 
 		this.cache = new ConcurrentMapCache("resourceCache");
 
@@ -63,7 +64,7 @@ public class CachingResourceResolverTests {
 
 
 	@Test
-	public void resolveResourceInternal() {
+	void resolveResourceInternal() {
 		Resource expected = new ClassPathResource("test/bar.css", getClass());
 		Resource actual = this.chain.resolveResource(null, "bar.css", this.locations);
 
@@ -72,8 +73,8 @@ public class CachingResourceResolverTests {
 	}
 
 	@Test
-	public void resolveResourceInternalFromCache() {
-		Resource expected = Mockito.mock(Resource.class);
+	void resolveResourceInternalFromCache() {
+		Resource expected = mock();
 		this.cache.put(resourceKey("bar.css"), expected);
 		Resource actual = this.chain.resolveResource(null, "bar.css", this.locations);
 
@@ -81,12 +82,12 @@ public class CachingResourceResolverTests {
 	}
 
 	@Test
-	public void resolveResourceInternalNoMatch() {
+	void resolveResourceInternalNoMatch() {
 		assertThat(this.chain.resolveResource(null, "invalid.css", this.locations)).isNull();
 	}
 
 	@Test
-	public void resolverUrlPath() {
+	void resolverUrlPath() {
 		String expected = "/foo.css";
 		String actual = this.chain.resolveUrlPath(expected, this.locations);
 
@@ -94,7 +95,7 @@ public class CachingResourceResolverTests {
 	}
 
 	@Test
-	public void resolverUrlPathFromCache() {
+	void resolverUrlPathFromCache() {
 		String expected = "cached-imaginary.css";
 		this.cache.put(CachingResourceResolver.RESOLVED_URL_PATH_CACHE_KEY_PREFIX + "imaginary.css", expected);
 		String actual = this.chain.resolveUrlPath("imaginary.css", this.locations);
@@ -103,15 +104,15 @@ public class CachingResourceResolverTests {
 	}
 
 	@Test
-	public void resolverUrlPathNoMatch() {
+	void resolverUrlPathNoMatch() {
 		assertThat(this.chain.resolveUrlPath("invalid.css", this.locations)).isNull();
 	}
 
 	@Test
-	public void resolveResourceAcceptEncodingInCacheKey() throws IOException {
+	void resolveResourceAcceptEncodingInCacheKey(GzippedFiles gzippedFiles) {
 
 		String file = "bar.css";
-		EncodedResourceResolverTests.createGzippedFile(file);
+		gzippedFiles.create(file);
 
 		// 1. Resolve plain resource
 
@@ -124,7 +125,7 @@ public class CachingResourceResolverTests {
 		// 2. Resolve with Accept-Encoding
 
 		request = new MockHttpServletRequest("GET", file);
-		request.addHeader("Accept-Encoding",  "gzip ; a=b  , deflate ,  br  ; c=d ");
+		request.addHeader("Accept-Encoding", "gzip ; a=b  , deflate ,  br  ; c=d ");
 		expected = this.chain.resolveResource(request, file, this.locations);
 
 		cacheKey = resourceKey(file + "+encoding=br,gzip");
@@ -141,7 +142,7 @@ public class CachingResourceResolverTests {
 	}
 
 	@Test
-	public void resolveResourceNoAcceptEncoding() {
+	void resolveResourceNoAcceptEncoding() {
 		String file = "bar.css";
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", file);
 		Resource expected = this.chain.resolveResource(request, file, this.locations);
@@ -153,9 +154,9 @@ public class CachingResourceResolverTests {
 	}
 
 	@Test
-	public void resolveResourceMatchingEncoding() {
-		Resource resource = Mockito.mock(Resource.class);
-		Resource gzipped = Mockito.mock(Resource.class);
+	void resolveResourceMatchingEncoding() {
+		Resource resource = mock();
+		Resource gzipped = mock();
 		this.cache.put(resourceKey("bar.css"), resource);
 		this.cache.put(resourceKey("bar.css+encoding=gzip"), gzipped);
 

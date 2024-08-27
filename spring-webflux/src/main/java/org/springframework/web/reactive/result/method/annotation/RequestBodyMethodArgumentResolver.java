@@ -34,7 +34,7 @@ import org.springframework.web.server.ServerWebInputException;
  * body of the request through a compatible {@code HttpMessageReader}.
  *
  * <p>An {@code @RequestBody} method argument is also validated if it is
- * annotated with {@code @javax.validation.Valid} or
+ * annotated with {@code @jakarta.validation.Valid} or
  * {@link org.springframework.validation.annotation.Validated}. Validation
  * failure results in an {@link ServerWebInputException}.
  *
@@ -45,9 +45,7 @@ import org.springframework.web.server.ServerWebInputException;
  */
 public class RequestBodyMethodArgumentResolver extends AbstractMessageReaderArgumentResolver {
 
-	public RequestBodyMethodArgumentResolver(List<HttpMessageReader<?>> readers,
-			ReactiveAdapterRegistry registry) {
-
+	public RequestBodyMethodArgumentResolver(List<HttpMessageReader<?>> readers, ReactiveAdapterRegistry registry) {
 		super(readers, registry);
 	}
 

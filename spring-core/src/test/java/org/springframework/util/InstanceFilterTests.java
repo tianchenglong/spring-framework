@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 
 package org.springframework.util;
 
-import org.junit.Test;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,17 +26,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Stephane Nicoll
  */
-public class InstanceFilterTests {
+class InstanceFilterTests {
 
 	@Test
-	public void emptyFilterApplyMatchIfEmpty() {
+	void emptyFilterApplyMatchIfEmpty() {
 		InstanceFilter<String> filter = new InstanceFilter<>(null, null, true);
 		match(filter, "foo");
 		match(filter, "bar");
 	}
 
 	@Test
-	public void includesFilter() {
+	void includesFilter() {
 		InstanceFilter<String> filter = new InstanceFilter<>(
 				asList("First", "Second"), null, true);
 		match(filter, "Second");
@@ -42,7 +44,7 @@ public class InstanceFilterTests {
 	}
 
 	@Test
-	public void excludesFilter() {
+	void excludesFilter() {
 		InstanceFilter<String> filter = new InstanceFilter<>(
 				null, asList("First", "Second"), true);
 		doNotMatch(filter, "Second");
@@ -50,7 +52,7 @@ public class InstanceFilterTests {
 	}
 
 	@Test
-	public void includesAndExcludesFilters() {
+	void includesAndExcludesFilters() {
 		InstanceFilter<String> filter = new InstanceFilter<>(
 				asList("foo", "Bar"), asList("First", "Second"), true);
 		doNotMatch(filter, "Second");
@@ -58,9 +60,9 @@ public class InstanceFilterTests {
 	}
 
 	@Test
-	public void includesAndExcludesFiltersConflict() {
+	void includesAndExcludesFiltersConflict() {
 		InstanceFilter<String> filter = new InstanceFilter<>(
-				asList("First"), asList("First"), true);
+				List.of("First"), List.of("First"), true);
 		doNotMatch(filter, "First");
 	}
 

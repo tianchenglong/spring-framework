@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+
+import org.springframework.lang.Nullable;
 
 /**
  * Simple {@link List} wrapper class that allows for elements to be
@@ -136,7 +138,7 @@ public class AutoPopulatingList<E> implements List<E>, Serializable {
 	@Override
 	public E get(int index) {
 		int backingListSize = this.backingList.size();
-		E element = null;
+		E element;
 		if (index < backingListSize) {
 			element = this.backingList.get(index);
 			if (element == null) {
@@ -231,7 +233,7 @@ public class AutoPopulatingList<E> implements List<E>, Serializable {
 
 
 	@Override
-	public boolean equals(Object other) {
+	public boolean equals(@Nullable Object other) {
 		return this.backingList.equals(other);
 	}
 

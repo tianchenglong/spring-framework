@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,29 +21,30 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.MethodParameter;
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.mock.web.test.MockHttpServletResponse;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.MatrixVariable;
 import org.springframework.web.context.request.ServletWebRequest;
-import org.springframework.web.method.ResolvableMethod;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.testfixture.method.ResolvableMethod;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
+import org.springframework.web.testfixture.servlet.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.web.method.MvcAnnotationPredicates.matrixAttribute;
+import static org.springframework.web.testfixture.method.MvcAnnotationPredicates.matrixAttribute;
 
 /**
  * Test fixture with {@link MatrixVariableMethodArgumentResolver}.
  *
  * @author Rossen Stoyanchev
  */
-public class MatrixVariablesMapMethodArgumentResolverTests {
+class MatrixVariablesMapMethodArgumentResolverTests {
 
 	private MatrixVariableMapMethodArgumentResolver resolver;
 
@@ -56,8 +57,8 @@ public class MatrixVariablesMapMethodArgumentResolverTests {
 	private final ResolvableMethod testMethod = ResolvableMethod.on(this.getClass()).named("handle").build();
 
 
-	@Before
-	public void setup() throws Exception {
+	@BeforeEach
+	void setup() throws Exception {
 		this.resolver = new MatrixVariableMapMethodArgumentResolver();
 		this.mavContainer = new ModelAndViewContainer();
 		this.request = new MockHttpServletRequest();
@@ -69,7 +70,7 @@ public class MatrixVariablesMapMethodArgumentResolverTests {
 
 
 	@Test
-	public void supportsParameter() {
+	void supportsParameter() {
 
 		assertThat(this.resolver.supportsParameter(this.testMethod.arg(String.class))).isFalse();
 
@@ -87,7 +88,7 @@ public class MatrixVariablesMapMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveArgument() throws Exception {
+	void resolveArgument() throws Exception {
 		MultiValueMap<String, String> params = getVariablesFor("cars");
 		params.add("colors", "red");
 		params.add("colors", "green");
@@ -115,7 +116,7 @@ public class MatrixVariablesMapMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveArgumentPathVariable() throws Exception {
+	void resolveArgumentPathVariable() throws Exception {
 		MultiValueMap<String, String> params1 = getVariablesFor("cars");
 		params1.add("colors", "red");
 		params1.add("colors", "purple");
@@ -143,7 +144,7 @@ public class MatrixVariablesMapMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveArgumentNoParams() throws Exception {
+	void resolveArgumentNoParams() throws Exception {
 
 		MethodParameter param = this.testMethod.annot(matrixAttribute().noName())
 				.arg(Map.class, String.class, String.class);
@@ -156,7 +157,19 @@ public class MatrixVariablesMapMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveArgumentNoMatch() throws Exception {
+	void resolveMultiValueMapArgumentNoParams() throws Exception {
+
+		MethodParameter param = this.testMethod.annot(matrixAttribute().noPathVar())
+				.arg(MultiValueMap.class, String.class, String.class);
+
+		Object result = this.resolver.resolveArgument(param, this.mavContainer, this.webRequest, null);
+
+		assertThat(result).isInstanceOf(MultiValueMap.class)
+				.asInstanceOf(InstanceOfAssertFactories.MAP).isEmpty();
+	}
+
+	@Test
+	void resolveArgumentNoMatch() throws Exception {
 		MultiValueMap<String, String> params2 = getVariablesFor("planes");
 		params2.add("colors", "yellow");
 		params2.add("colors", "orange");

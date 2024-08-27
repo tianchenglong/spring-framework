@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@
 
 package org.springframework.aop.aspectj;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
@@ -27,31 +28,35 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Ramnivas Laddad
  * @author Chris Beams
  */
-public class DeclareParentsDelegateRefTests {
+class DeclareParentsDelegateRefTests {
 
-	protected NoMethodsBean noMethodsBean;
+	private ClassPathXmlApplicationContext ctx;
 
-	protected Counter counter;
+	private NoMethodsBean noMethodsBean;
+
+	private Counter counter;
 
 
-	@Before
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+	@BeforeEach
+	void setup() {
+		this.ctx = new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
 		noMethodsBean = (NoMethodsBean) ctx.getBean("noMethodsBean");
 		counter = (Counter) ctx.getBean("counter");
-		counter.reset();
+	}
+
+	@AfterEach
+	void tearDown() {
+		this.ctx.close();
 	}
 
 
 	@Test
-	public void testIntroductionWasMade() {
-		boolean condition = noMethodsBean instanceof ICounter;
-		assertThat(condition).as("Introduction must have been made").isTrue();
+	void introductionWasMade() {
+		assertThat(noMethodsBean).as("Introduction must have been made").isInstanceOf(ICounter.class);
 	}
 
 	@Test
-	public void testIntroductionDelegation() {
+	void introductionDelegation() {
 		((ICounter)noMethodsBean).increment();
 		assertThat(counter.getCount()).as("Delegate's counter should be updated").isEqualTo(1);
 	}

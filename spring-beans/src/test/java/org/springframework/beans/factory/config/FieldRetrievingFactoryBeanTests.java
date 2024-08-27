@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,51 +18,51 @@ package org.springframework.beans.factory.config;
 
 import java.sql.Connection;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
-import org.springframework.tests.sample.beans.TestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.tests.TestResourceUtils.qualifiedResource;
+import static org.springframework.core.testfixture.io.ResourceTestUtils.qualifiedResource;
 
 /**
- * Unit tests for {@link FieldRetrievingFactoryBean}.
+ * Tests for {@link FieldRetrievingFactoryBean}.
  *
  * @author Juergen Hoeller
  * @author Chris Beams
  * @since 31.07.2004
  */
-public class FieldRetrievingFactoryBeanTests {
+class FieldRetrievingFactoryBeanTests {
 
 	@Test
-	public void testStaticField() throws Exception {
+	void testStaticField() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setStaticField("java.sql.Connection.TRANSACTION_SERIALIZABLE");
 		fr.afterPropertiesSet();
-		assertThat(fr.getObject()).isEqualTo(new Integer(Connection.TRANSACTION_SERIALIZABLE));
+		assertThat(fr.getObject()).isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
 	}
 
 	@Test
-	public void testStaticFieldWithWhitespace() throws Exception {
+	void testStaticFieldWithWhitespace() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setStaticField("  java.sql.Connection.TRANSACTION_SERIALIZABLE  ");
 		fr.afterPropertiesSet();
-		assertThat(fr.getObject()).isEqualTo(new Integer(Connection.TRANSACTION_SERIALIZABLE));
+		assertThat(fr.getObject()).isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
 	}
 
 	@Test
-	public void testStaticFieldViaClassAndFieldName() throws Exception {
+	void testStaticFieldViaClassAndFieldName() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setTargetClass(Connection.class);
 		fr.setTargetField("TRANSACTION_SERIALIZABLE");
 		fr.afterPropertiesSet();
-		assertThat(fr.getObject()).isEqualTo(new Integer(Connection.TRANSACTION_SERIALIZABLE));
+		assertThat(fr.getObject()).isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
 	}
 
 	@Test
-	public void testNonStaticField() throws Exception {
+	void testNonStaticField() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		PublicFieldHolder target = new PublicFieldHolder();
 		fr.setTargetObject(target);
@@ -72,15 +72,15 @@ public class FieldRetrievingFactoryBeanTests {
 	}
 
 	@Test
-	public void testNothingButBeanName() throws Exception {
+	void testNothingButBeanName() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setBeanName("java.sql.Connection.TRANSACTION_SERIALIZABLE");
 		fr.afterPropertiesSet();
-		assertThat(fr.getObject()).isEqualTo(new Integer(Connection.TRANSACTION_SERIALIZABLE));
+		assertThat(fr.getObject()).isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
 	}
 
 	@Test
-	public void testJustTargetField() throws Exception {
+	void testJustTargetField() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setTargetField("TRANSACTION_SERIALIZABLE");
 		try {
@@ -91,7 +91,7 @@ public class FieldRetrievingFactoryBeanTests {
 	}
 
 	@Test
-	public void testJustTargetClass() throws Exception {
+	void testJustTargetClass() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setTargetClass(Connection.class);
 		try {
@@ -102,7 +102,7 @@ public class FieldRetrievingFactoryBeanTests {
 	}
 
 	@Test
-	public void testJustTargetObject() throws Exception {
+	void testJustTargetObject() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
 		fr.setTargetObject(new PublicFieldHolder());
 		try {
@@ -113,22 +113,22 @@ public class FieldRetrievingFactoryBeanTests {
 	}
 
 	@Test
-	public void testWithConstantOnClassWithPackageLevelVisibility() throws Exception {
+	void testWithConstantOnClassWithPackageLevelVisibility() throws Exception {
 		FieldRetrievingFactoryBean fr = new FieldRetrievingFactoryBean();
-		fr.setBeanName("org.springframework.tests.sample.beans.PackageLevelVisibleBean.CONSTANT");
+		fr.setBeanName("org.springframework.beans.testfixture.beans.PackageLevelVisibleBean.CONSTANT");
 		fr.afterPropertiesSet();
 		assertThat(fr.getObject()).isEqualTo("Wuby");
 	}
 
 	@Test
-	public void testBeanNameSyntaxWithBeanFactory() throws Exception {
+	void testBeanNameSyntaxWithBeanFactory() {
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(
 				qualifiedResource(FieldRetrievingFactoryBeanTests.class, "context.xml"));
 
 		TestBean testBean = (TestBean) bf.getBean("testBean");
-		assertThat(testBean.getSomeIntegerArray()[0]).isEqualTo(new Integer(Connection.TRANSACTION_SERIALIZABLE));
-		assertThat(testBean.getSomeIntegerArray()[1]).isEqualTo(new Integer(Connection.TRANSACTION_SERIALIZABLE));
+		assertThat(testBean.getSomeIntegerArray()[0]).isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
+		assertThat(testBean.getSomeIntegerArray()[1]).isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
 	}
 
 

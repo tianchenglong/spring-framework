@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 
 package org.springframework.ejb.config;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.parsing.BeanComponentDefinition;
 import org.springframework.beans.factory.parsing.ComponentDefinition;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.springframework.beans.testfixture.beans.CollectingReaderEventListener;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.tests.beans.CollectingReaderEventListener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,38 +33,39 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Juergen Hoeller
  * @author Chris Beams
  */
-public class JeeNamespaceHandlerEventTests {
+class JeeNamespaceHandlerEventTests {
 
-	private CollectingReaderEventListener eventListener = new CollectingReaderEventListener();
+	private final CollectingReaderEventListener eventListener = new CollectingReaderEventListener();
+
+	private final DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 
 	private XmlBeanDefinitionReader reader;
 
-	private DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 
-
-	@Before
-	public void setUp() throws Exception {
+	@BeforeEach
+	void setup() {
 		this.reader = new XmlBeanDefinitionReader(this.beanFactory);
 		this.reader.setEventListener(this.eventListener);
 		this.reader.loadBeanDefinitions(new ClassPathResource("jeeNamespaceHandlerTests.xml", getClass()));
 	}
 
+
 	@Test
-	public void testJndiLookupComponentEventReceived() {
+	void testJndiLookupComponentEventReceived() {
 		ComponentDefinition component = this.eventListener.getComponentDefinition("simple");
 		boolean condition = component instanceof BeanComponentDefinition;
 		assertThat(condition).isTrue();
 	}
 
 	@Test
-	public void testLocalSlsbComponentEventReceived() {
+	void testLocalSlsbComponentEventReceived() {
 		ComponentDefinition component = this.eventListener.getComponentDefinition("simpleLocalEjb");
 		boolean condition = component instanceof BeanComponentDefinition;
 		assertThat(condition).isTrue();
 	}
 
 	@Test
-	public void testRemoteSlsbComponentEventReceived() {
+	void testRemoteSlsbComponentEventReceived() {
 		ComponentDefinition component = this.eventListener.getComponentDefinition("simpleRemoteEjb");
 		boolean condition = component instanceof BeanComponentDefinition;
 		assertThat(condition).isTrue();

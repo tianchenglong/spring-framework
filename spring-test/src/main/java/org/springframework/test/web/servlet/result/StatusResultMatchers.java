@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ package org.springframework.test.web.servlet.result;
 import org.hamcrest.Matcher;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.util.Assert;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.springframework.test.util.AssertionErrors.assertEquals;
@@ -51,7 +53,7 @@ public class StatusResultMatchers {
 	 * Assert the response status code with the given Hamcrest {@link Matcher}.
 	 * Use the {@code StatusResultMatchers.isEqualTo} extension in Kotlin.
 	 */
-	public ResultMatcher is(final Matcher<Integer> matcher) {
+	public ResultMatcher is(Matcher<? super Integer> matcher) {
 		return result -> assertThat("Response status", result.getResponse().getStatus(), matcher);
 	}
 
@@ -59,7 +61,7 @@ public class StatusResultMatchers {
 	 * Assert the response status code is equal to an integer value.
 	 * Use the {@code StatusResultMatchers.isEqualTo} extension in Kotlin.
 	 */
-	public ResultMatcher is(final int status) {
+	public ResultMatcher is(int status) {
 		return result -> assertEquals("Response status", status, result.getResponse().getStatus());
 	}
 
@@ -104,22 +106,22 @@ public class StatusResultMatchers {
 	}
 
 	private HttpStatus.Series getHttpStatusSeries(MvcResult result) {
-		int statusValue = result.getResponse().getStatus();
-		HttpStatus status = HttpStatus.valueOf(statusValue);
-		return status.series();
+		HttpStatus.Series series = HttpStatus.Series.resolve(result.getResponse().getStatus());
+		Assert.state(series != null, "HTTP status series must not be null");
+		return series;
 	}
 
 	/**
 	 * Assert the Servlet response error message with the given Hamcrest {@link Matcher}.
 	 */
-	public ResultMatcher reason(final Matcher<? super String> matcher) {
+	public ResultMatcher reason(Matcher<? super String> matcher) {
 		return result -> assertThat("Response status reason", result.getResponse().getErrorMessage(), matcher);
 	}
 
 	/**
 	 * Assert the Servlet response error message.
 	 */
-	public ResultMatcher reason(final String reason) {
+	public ResultMatcher reason(String reason) {
 		return result -> assertEquals("Response status reason", reason, result.getResponse().getErrorMessage());
 	}
 
@@ -146,8 +148,19 @@ public class StatusResultMatchers {
 
 	/**
 	 * Assert the response status code is {@code HttpStatus.CHECKPOINT} (103).
+	 * @see #isEarlyHints()
+	 * @deprecated in favor of {@link #isEarlyHints()}
 	 */
+	@Deprecated(since = "6.0.5")
 	public ResultMatcher isCheckpoint() {
+		return isEarlyHints();
+	}
+
+	/**
+	 * Assert the response status code is {@code HttpStatus.EARLY_HINTS} (103).
+	 * @since 6.0.5
+	 */
+	public ResultMatcher isEarlyHints() {
 		return matcher(HttpStatus.valueOf(103));
 	}
 
@@ -390,8 +403,8 @@ public class StatusResultMatchers {
 
 	/**
 	 * Assert the response status code is {@code HttpStatus.REQUEST_ENTITY_TOO_LARGE} (413).
-	 * @deprecated matching the deprecation of {@code HttpStatus.REQUEST_ENTITY_TOO_LARGE}
 	 * @see #isPayloadTooLarge()
+	 * @deprecated matching the deprecation of {@code HttpStatus.REQUEST_ENTITY_TOO_LARGE}
 	 */
 	@Deprecated
 	public ResultMatcher isRequestEntityTooLarge() {
@@ -408,8 +421,8 @@ public class StatusResultMatchers {
 
 	/**
 	 * Assert the response status code is {@code HttpStatus.REQUEST_URI_TOO_LONG} (414).
-	 * @deprecated matching the deprecation of {@code HttpStatus.REQUEST_URI_TOO_LONG}
 	 * @see #isUriTooLong()
+	 * @deprecated matching the deprecation of {@code HttpStatus.REQUEST_URI_TOO_LONG}
 	 */
 	@Deprecated
 	public ResultMatcher isRequestUriTooLong() {
@@ -490,6 +503,14 @@ public class StatusResultMatchers {
 	 */
 	public ResultMatcher isFailedDependency() {
 		return matcher(HttpStatus.FAILED_DEPENDENCY);
+	}
+
+	/**
+	 * Assert the response status code is {@code HttpStatus.TOO_EARLY} (425).
+	 * @since 5.2
+	 */
+	public ResultMatcher isTooEarly() {
+		return matcher(HttpStatus.valueOf(425));
 	}
 
 	/**
@@ -615,7 +636,7 @@ public class StatusResultMatchers {
 	/**
 	 * Match the expected response status to that of the HttpServletResponse.
 	 */
-	private ResultMatcher matcher(final HttpStatus status) {
+	private ResultMatcher matcher(HttpStatusCode status) {
 		return result -> assertEquals("Status", status.value(), result.getResponse().getStatus());
 	}
 

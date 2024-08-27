@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@ package org.springframework.jmx.export.assembler;
 
 import java.lang.reflect.Method;
 import java.util.Properties;
+
 import javax.management.modelmbean.ModelMBeanAttributeInfo;
 import javax.management.modelmbean.ModelMBeanInfo;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.jmx.JmxTestBean;
 
@@ -32,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Rick Evans
  * @author Chris Beams
  */
-public class MethodExclusionMBeanInfoAssemblerTests extends AbstractJmxAssemblerTests {
+class MethodExclusionMBeanInfoAssemblerTests extends AbstractJmxAssemblerTests {
 
 	private static final String OBJECT_NAME = "bean:name=testBean5";
 
@@ -65,7 +66,7 @@ public class MethodExclusionMBeanInfoAssemblerTests extends AbstractJmxAssembler
 	}
 
 	@Test
-	public void testSupermanIsReadOnly() throws Exception {
+	void testSupermanIsReadOnly() throws Exception {
 		ModelMBeanInfo info = getMBeanInfoFromAssembler();
 		ModelMBeanAttributeInfo attr = info.getAttribute("Superman");
 
@@ -77,7 +78,7 @@ public class MethodExclusionMBeanInfoAssemblerTests extends AbstractJmxAssembler
 	 * https://opensource.atlassian.com/projects/spring/browse/SPR-2754
 	 */
 	@Test
-	public void testIsNotIgnoredDoesntIgnoreUnspecifiedBeanMethods() throws Exception {
+	void testIsNotIgnoredDoesntIgnoreUnspecifiedBeanMethods() throws Exception {
 		final String beanKey = "myTestBean";
 		MethodExclusionMBeanInfoAssembler assembler = new MethodExclusionMBeanInfoAssembler();
 		Properties ignored = new Properties();

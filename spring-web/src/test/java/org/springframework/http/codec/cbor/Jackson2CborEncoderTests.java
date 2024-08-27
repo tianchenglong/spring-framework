@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,17 @@ import java.io.UncheckedIOException;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import org.springframework.core.ResolvableType;
-import org.springframework.core.io.buffer.AbstractLeakCheckingTestCase;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.support.DataBufferTestUtils;
-import org.springframework.http.codec.Pojo;
+import org.springframework.core.testfixture.io.buffer.AbstractLeakCheckingTests;
+import org.springframework.core.testfixture.io.buffer.DataBufferTestUtils;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.util.MimeType;
+import org.springframework.web.testfixture.xml.Pojo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -39,13 +39,13 @@ import static org.springframework.core.io.buffer.DataBufferUtils.release;
 import static org.springframework.http.MediaType.APPLICATION_XML;
 
 /**
- * Unit tests for {@link Jackson2CborEncoder}.
+ * Tests for {@link Jackson2CborEncoder}.
  *
  * @author Sebastien Deleuze
  */
-public class Jackson2CborEncoderTests extends AbstractLeakCheckingTestCase {
+class Jackson2CborEncoderTests extends AbstractLeakCheckingTests {
 
-	private final static MimeType CBOR_MIME_TYPE = new MimeType("application", "cbor");
+	private static final MimeType CBOR_MIME_TYPE = new MimeType("application", "cbor");
 
 	private final ObjectMapper mapper = Jackson2ObjectMapperBuilder.cbor().build();
 
@@ -66,7 +66,7 @@ public class Jackson2CborEncoderTests extends AbstractLeakCheckingTestCase {
 	}
 
 	@Test
-	public void canEncode() {
+	void canEncode() {
 		ResolvableType pojoType = ResolvableType.forClass(Pojo.class);
 		assertThat(this.encoder.canEncode(pojoType, CBOR_MIME_TYPE)).isTrue();
 		assertThat(this.encoder.canEncode(pojoType, null)).isTrue();
@@ -76,7 +76,7 @@ public class Jackson2CborEncoderTests extends AbstractLeakCheckingTestCase {
 	}
 
 	@Test
-	public void canNotEncode() {
+	void canNotEncode() {
 		assertThat(this.encoder.canEncode(ResolvableType.forClass(String.class), null)).isFalse();
 		assertThat(this.encoder.canEncode(ResolvableType.forClass(Pojo.class), APPLICATION_XML)).isFalse();
 
@@ -85,14 +85,14 @@ public class Jackson2CborEncoderTests extends AbstractLeakCheckingTestCase {
 	}
 
 	@Test
-	public void encode() {
+	void encode() {
 		Pojo value = new Pojo("foo", "bar");
 		DataBuffer result = encoder.encodeValue(value, this.bufferFactory, ResolvableType.forClass(Pojo.class), CBOR_MIME_TYPE, null);
 		pojoConsumer(value).accept(result);
 	}
 
 	@Test
-	public void encodeStream() {
+	void encodeStream() {
 		Pojo pojo1 = new Pojo("foo", "bar");
 		Pojo pojo2 = new Pojo("foofoo", "barbar");
 		Pojo pojo3 = new Pojo("foofoofoo", "barbarbar");

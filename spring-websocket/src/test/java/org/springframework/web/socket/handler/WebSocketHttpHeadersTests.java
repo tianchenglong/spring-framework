@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ package org.springframework.web.socket.handler;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.web.socket.WebSocketExtension;
 import org.springframework.web.socket.WebSocketHttpHeaders;
@@ -29,21 +29,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
- * Unit tests for WebSocketHttpHeaders.
+ * Tests for {@link WebSocketHttpHeaders}.
  *
  * @author Rossen Stoyanchev
  */
-public class WebSocketHttpHeadersTests {
+class WebSocketHttpHeadersTests {
 
 	private WebSocketHttpHeaders headers;
 
-	@Before
-	public void setUp() {
+	@BeforeEach
+	void setUp() {
 		headers = new WebSocketHttpHeaders();
 	}
 
 	@Test
-	public void parseWebSocketExtensions() {
+	void parseWebSocketExtensions() {
 		List<String> extensions = new ArrayList<>();
 		extensions.add("x-foo-extension, x-bar-extension");
 		extensions.add("x-test-extension");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import reactor.core.scheduler.Schedulers;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.web.server.WebSession;
@@ -31,16 +32,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
- * Unit tests for {@link InMemoryWebSessionStore}.
+ * Tests for {@link InMemoryWebSessionStore}.
+ *
  * @author Rob Winch
  */
-public class InMemoryWebSessionStoreTests {
+class InMemoryWebSessionStoreTests {
 
 	private InMemoryWebSessionStore store = new InMemoryWebSessionStore();
 
 
 	@Test
-	public void startsSessionExplicitly() {
+	void startsSessionExplicitly() {
 		WebSession session = this.store.createWebSession().block();
 		assertThat(session).isNotNull();
 		session.start();
@@ -48,7 +50,7 @@ public class InMemoryWebSessionStoreTests {
 	}
 
 	@Test
-	public void startsSessionImplicitly() {
+	void startsSessionImplicitly() {
 		WebSession session = this.store.createWebSession().block();
 		assertThat(session).isNotNull();
 		session.start();
@@ -56,8 +58,15 @@ public class InMemoryWebSessionStoreTests {
 		assertThat(session.isStarted()).isTrue();
 	}
 
+	@Test // gh-24027, gh-26958
+	public void createSessionDoesNotBlock() {
+		this.store.createWebSession()
+				.doOnNext(session -> assertThat(Schedulers.isInNonBlockingThread()).isTrue())
+				.block();
+	}
+
 	@Test
-	public void retrieveExpiredSession() {
+	void retrieveExpiredSession() {
 		WebSession session = this.store.createWebSession().block();
 		assertThat(session).isNotNull();
 		session.getAttributes().put("foo", "bar");
@@ -75,7 +84,7 @@ public class InMemoryWebSessionStoreTests {
 	}
 
 	@Test
-	public void lastAccessTimeIsUpdatedOnRetrieve() {
+	void lastAccessTimeIsUpdatedOnRetrieve() {
 		WebSession session1 = this.store.createWebSession().block();
 		assertThat(session1).isNotNull();
 		String id = session1.getId();
@@ -122,7 +131,7 @@ public class InMemoryWebSessionStoreTests {
 	}
 
 	@Test
-	public void expirationCheckPeriod() {
+	void expirationCheckPeriod() {
 
 		DirectFieldAccessor accessor = new DirectFieldAccessor(this.store);
 		Map<?,?> sessions = (Map<?, ?>) accessor.getPropertyValue("sessions");
@@ -130,19 +139,19 @@ public class InMemoryWebSessionStoreTests {
 
 		// Create 100 sessions
 		IntStream.range(0, 100).forEach(i -> insertSession());
-		assertThat(sessions.size()).isEqualTo(100);
+		assertThat(sessions).hasSize(100);
 
 		// Force a new clock (31 min later), don't use setter which would clean expired sessions
 		accessor.setPropertyValue("clock", Clock.offset(this.store.getClock(), Duration.ofMinutes(31)));
-		assertThat(sessions.size()).isEqualTo(100);
+		assertThat(sessions).hasSize(100);
 
 		// Create 1 more which forces a time-based check (clock moved forward)
 		insertSession();
-		assertThat(sessions.size()).isEqualTo(1);
+		assertThat(sessions).hasSize(1);
 	}
 
 	@Test
-	public void maxSessions() {
+	void maxSessions() {
 
 		IntStream.range(0, 10000).forEach(i -> insertSession());
 		assertThatIllegalStateException().isThrownBy(

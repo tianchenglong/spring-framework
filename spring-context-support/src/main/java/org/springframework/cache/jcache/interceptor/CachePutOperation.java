@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.cache.jcache.interceptor;
 
 import java.lang.reflect.Method;
 import java.util.List;
+
 import javax.cache.annotation.CacheInvocationParameter;
 import javax.cache.annotation.CacheMethodDetails;
 import javax.cache.annotation.CachePut;
@@ -101,7 +102,7 @@ class CachePutOperation extends AbstractJCacheKeyOperation<CachePut> {
 					result = parameter;
 				}
 				else {
-					throw new IllegalArgumentException("More than one @CacheValue found on " + method + "");
+					throw new IllegalArgumentException("More than one @CacheValue found on " + method);
 				}
 			}
 		}

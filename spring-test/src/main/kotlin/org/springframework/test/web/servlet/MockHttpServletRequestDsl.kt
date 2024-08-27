@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor
 import org.springframework.util.MultiValueMap
 import java.security.Principal
 import java.util.*
-import javax.servlet.http.Cookie
+import jakarta.servlet.http.Cookie
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder
 
 /**
  * Provide a [MockHttpServletRequestBuilder] Kotlin DSL in order to be able to write idiomatic Kotlin code.
@@ -40,7 +41,7 @@ import javax.servlet.http.Cookie
  * @author Sebastien Deleuze
  * @since 5.2
  */
-open class MockHttpServletRequestDsl(private val builder: MockHttpServletRequestBuilder) {
+open class MockHttpServletRequestDsl internal constructor (private val builder: AbstractMockHttpServletRequestBuilder<*>) {
 
 	/**
 	 * @see [MockHttpServletRequestBuilder.contextPath]
@@ -116,6 +117,19 @@ open class MockHttpServletRequestDsl(private val builder: MockHttpServletRequest
 	var params: MultiValueMap<String, String>? = null
 
 	/**
+	 * @since 6.1.5
+	 * @see [MockHttpServletRequestBuilder.queryParam]
+	 */
+	fun queryParam(name: String, vararg values: String) {
+		builder.queryParam(name, *values)
+	}
+
+	/**
+	 * @see [MockHttpServletRequestBuilder.queryParams]
+	 */
+	var queryParams: MultiValueMap<String, String>? = null
+
+	/**
 	 * @see [MockHttpServletRequestBuilder.cookie]
 	 */
 	fun cookie(vararg cookies: Cookie) {
@@ -185,25 +199,26 @@ open class MockHttpServletRequestDsl(private val builder: MockHttpServletRequest
 	}
 
 	internal fun perform(mockMvc: MockMvc): ResultActionsDsl {
-		contextPath?.also { builder.contextPath(contextPath!!) }
-		servletPath?.also { builder.servletPath(servletPath!!) }
-		pathInfo?.also { builder.pathInfo(pathInfo) }
-		secure?.also { builder.secure(secure!!) }
-		characterEncoding?.also { builder.characterEncoding(characterEncoding!!) }
+		contextPath?.also { builder.contextPath(it) }
+		servletPath?.also { builder.servletPath(it) }
+		pathInfo?.also { builder.pathInfo(it) }
+		secure?.also { builder.secure(it) }
+		characterEncoding?.also { builder.characterEncoding(it) }
 		content?.also {
-			when (content) {
-				is String -> builder.content(content as String)
-				is ByteArray -> builder.content(content as ByteArray)
-				else -> builder.content(content.toString())
+			when (it) {
+				is String -> builder.content(it)
+				is ByteArray -> builder.content(it)
+				else -> builder.content(it.toString())
 			}
 		}
-		accept?.also { builder.accept(accept!!) }
-		contentType?.also { builder.contentType(contentType!!) }
-		params?.also { builder.params(params!!) }
-		sessionAttrs?.also { builder.sessionAttrs(sessionAttrs!!) }
-		flashAttrs?.also { builder.flashAttrs(flashAttrs!!) }
-		session?.also { builder.session(session!!) }
-		principal?.also { builder.principal(principal!!) }
-		return ResultActionsDsl(mockMvc.perform(builder))
+		accept?.also { builder.accept(it) }
+		contentType?.also { builder.contentType(it) }
+		params?.also { builder.params(it) }
+		queryParams?.also { builder.queryParams(it) }
+		sessionAttrs?.also { builder.sessionAttrs(it) }
+		flashAttrs?.also { builder.flashAttrs(it) }
+		session?.also { builder.session(it) }
+		principal?.also { builder.principal(it) }
+		return ResultActionsDsl(mockMvc.perform(builder), mockMvc)
 	}
 }

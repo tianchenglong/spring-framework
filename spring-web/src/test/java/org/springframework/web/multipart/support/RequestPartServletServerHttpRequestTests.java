@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,33 +18,35 @@ package org.springframework.web.multipart.support;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
 
-import org.junit.Test;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.mock.web.test.MockMultipartFile;
-import org.springframework.mock.web.test.MockMultipartHttpServletRequest;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.testfixture.servlet.MockMultipartFile;
+import org.springframework.web.testfixture.servlet.MockMultipartHttpServletRequest;
+import org.springframework.web.testfixture.servlet.MockPart;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Rossen Stoyanchev
+ * @author Juergen Hoeller
  */
-public class RequestPartServletServerHttpRequestTests {
+class RequestPartServletServerHttpRequestTests {
 
 	private final MockMultipartHttpServletRequest mockRequest = new MockMultipartHttpServletRequest();
 
 
 	@Test
-	public void getMethod() throws Exception {
-		this.mockRequest.addFile(new MockMultipartFile("part", "", "", "content".getBytes("UTF-8")));
+	void getMethod() throws Exception {
+		this.mockRequest.addFile(new MockMultipartFile("part", "", "", "content".getBytes(StandardCharsets.UTF_8)));
 		ServerHttpRequest request = new RequestPartServletServerHttpRequest(this.mockRequest, "part");
 		this.mockRequest.setMethod("POST");
 
@@ -52,11 +54,11 @@ public class RequestPartServletServerHttpRequestTests {
 	}
 
 	@Test
-	public void getURI() throws Exception {
-		this.mockRequest.addFile(new MockMultipartFile("part", "", "application/json", "content".getBytes("UTF-8")));
+	void getURI() throws Exception {
+		this.mockRequest.addFile(new MockMultipartFile("part", "", "application/json", "content".getBytes(StandardCharsets.UTF_8)));
 		ServerHttpRequest request = new RequestPartServletServerHttpRequest(this.mockRequest, "part");
 
-		URI uri = new URI("https://example.com/path?query");
+		URI uri = URI.create("https://example.com/path?query");
 		this.mockRequest.setScheme(uri.getScheme());
 		this.mockRequest.setServerName(uri.getHost());
 		this.mockRequest.setServerPort(uri.getPort());
@@ -66,8 +68,8 @@ public class RequestPartServletServerHttpRequestTests {
 	}
 
 	@Test
-	public void getContentType() throws Exception {
-		MultipartFile part = new MockMultipartFile("part", "", "application/json", "content".getBytes("UTF-8"));
+	void getContentType() throws Exception {
+		MultipartFile part = new MockMultipartFile("part", "", "application/json", "content".getBytes(StandardCharsets.UTF_8));
 		this.mockRequest.addFile(part);
 		ServerHttpRequest request = new RequestPartServletServerHttpRequest(this.mockRequest, "part");
 
@@ -77,8 +79,8 @@ public class RequestPartServletServerHttpRequestTests {
 	}
 
 	@Test
-	public void getBody() throws Exception {
-		byte[] bytes = "content".getBytes("UTF-8");
+	void getBody() throws Exception {
+		byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
 		MultipartFile part = new MockMultipartFile("part", "", "application/json", bytes);
 		this.mockRequest.addFile(part);
 		ServerHttpRequest request = new RequestPartServletServerHttpRequest(this.mockRequest, "part");
@@ -89,7 +91,7 @@ public class RequestPartServletServerHttpRequestTests {
 
 	@Test  // SPR-13317
 	public void getBodyWithWrappedRequest() throws Exception {
-		byte[] bytes = "content".getBytes("UTF-8");
+		byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
 		MultipartFile part = new MockMultipartFile("part", "", "application/json", bytes);
 		this.mockRequest.addFile(part);
 		HttpServletRequest wrapped = new HttpServletRequestWrapper(this.mockRequest);
@@ -118,7 +120,7 @@ public class RequestPartServletServerHttpRequestTests {
 	}
 
 	@Test
-	public void getBodyViaRequestParameterWithRequestEncoding() throws Exception {
+	void getBodyViaRequestParameterWithRequestEncoding() throws Exception {
 		MockMultipartHttpServletRequest mockRequest = new MockMultipartHttpServletRequest() {
 			@Override
 			public HttpHeaders getMultipartHeaders(String paramOrFileName) {
@@ -132,6 +134,18 @@ public class RequestPartServletServerHttpRequestTests {
 		mockRequest.setParameter("part", new String(bytes, StandardCharsets.ISO_8859_1));
 		mockRequest.setCharacterEncoding("iso-8859-1");
 		ServerHttpRequest request = new RequestPartServletServerHttpRequest(mockRequest, "part");
+		byte[] result = FileCopyUtils.copyToByteArray(request.getBody());
+		assertThat(result).isEqualTo(bytes);
+	}
+
+	@Test  // gh-25829
+	public void getBodyViaRequestPart() throws Exception {
+		byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+		MockPart mockPart = new MockPart("part", bytes);
+		mockPart.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+		this.mockRequest.addPart(mockPart);
+		ServerHttpRequest request = new RequestPartServletServerHttpRequest(this.mockRequest, "part");
+
 		byte[] result = FileCopyUtils.copyToByteArray(request.getBody());
 		assertThat(result).isEqualTo(bytes);
 	}

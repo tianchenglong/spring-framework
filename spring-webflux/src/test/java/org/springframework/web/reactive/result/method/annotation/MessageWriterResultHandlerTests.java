@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.web.reactive.result.method.annotation;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,13 +27,13 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import io.reactivex.Flowable;
-import org.junit.Test;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Observable;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import rx.Completable;
-import rx.Observable;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.core.codec.ByteBufferEncoder;
@@ -47,24 +46,25 @@ import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.codec.ResourceHttpMessageWriter;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.http.codec.xml.Jaxb2XmlEncoder;
-import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
-import org.springframework.mock.web.test.server.MockServerWebExchange;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.reactive.accept.RequestedContentTypeResolver;
 import org.springframework.web.reactive.accept.RequestedContentTypeResolverBuilder;
+import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest;
+import org.springframework.web.testfixture.server.MockServerWebExchange;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.core.io.buffer.support.DataBufferTestUtils.dumpString;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.web.method.ResolvableMethod.on;
 import static org.springframework.web.reactive.HandlerMapping.PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE;
+import static org.springframework.web.testfixture.method.ResolvableMethod.on;
 
 /**
- * Unit tests for {@link AbstractMessageWriterResultHandler}.
+ * Tests for {@link AbstractMessageWriterResultHandler}.
  *
  * @author Rossen Stoyanchev
+ * @author Sebastien Deleuze
  */
-public class MessageWriterResultHandlerTests {
+class MessageWriterResultHandlerTests {
 
 	private final AbstractMessageWriterResultHandler resultHandler = initResultHandler();
 
@@ -90,7 +90,7 @@ public class MessageWriterResultHandlerTests {
 
 
 	@Test  // SPR-12894
-	public void useDefaultContentType() throws Exception {
+	public void useDefaultContentType() {
 		Resource body = new ClassPathResource("logo.png", getClass());
 		MethodParameter type = on(TestController.class).resolveReturnType(Resource.class);
 		this.resultHandler.writeBody(body, type, this.exchange).block(Duration.ofSeconds(5));
@@ -99,7 +99,7 @@ public class MessageWriterResultHandlerTests {
 	}
 
 	@Test  // SPR-13631
-	public void useDefaultCharset() throws Exception {
+	public void useDefaultCharset() {
 		this.exchange.getAttributes().put(PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE,
 				Collections.singleton(APPLICATION_JSON));
 
@@ -111,18 +111,18 @@ public class MessageWriterResultHandlerTests {
 	}
 
 	@Test
-	public void voidReturnType() throws Exception {
+	void voidReturnType() {
 		testVoid(null, on(TestController.class).resolveReturnType(void.class));
 		testVoid(Mono.empty(), on(TestController.class).resolveReturnType(Mono.class, Void.class));
 		testVoid(Flux.empty(), on(TestController.class).resolveReturnType(Flux.class, Void.class));
 		testVoid(Completable.complete(), on(TestController.class).resolveReturnType(Completable.class));
 		testVoid(Observable.empty(), on(TestController.class).resolveReturnType(Observable.class, Void.class));
 
-		MethodParameter type = on(TestController.class).resolveReturnType(io.reactivex.Completable.class);
-		testVoid(io.reactivex.Completable.complete(), type);
+		MethodParameter type = on(TestController.class).resolveReturnType(Completable.class);
+		testVoid(Completable.complete(), type);
 
-		type = on(TestController.class).resolveReturnType(io.reactivex.Observable.class, Void.class);
-		testVoid(io.reactivex.Observable.empty(), type);
+		type = on(TestController.class).resolveReturnType(Observable.class, Void.class);
+		testVoid(Observable.empty(), type);
 
 		type = on(TestController.class).resolveReturnType(Flowable.class, Void.class);
 		testVoid(Flowable.empty(), type);
@@ -137,7 +137,7 @@ public class MessageWriterResultHandlerTests {
 	}
 
 	@Test  // SPR-13135
-	public void unsupportedReturnType() throws Exception {
+	public void unsupportedReturnType() {
 		ByteArrayOutputStream body = new ByteArrayOutputStream();
 		MethodParameter type = on(TestController.class).resolveReturnType(OutputStream.class);
 
@@ -148,7 +148,7 @@ public class MessageWriterResultHandlerTests {
 	}
 
 	@Test  // SPR-12811
-	public void jacksonTypeOfListElement() throws Exception {
+	public void jacksonTypeOfListElement() {
 
 		MethodParameter returnType = on(TestController.class).resolveReturnType(List.class, ParentClass.class);
 		List<ParentClass> body = Arrays.asList(new Foo("foo"), new Bar("bar"));
@@ -160,7 +160,7 @@ public class MessageWriterResultHandlerTests {
 	}
 
 	@Test  // SPR-13318
-	public void jacksonTypeWithSubType() throws Exception {
+	public void jacksonTypeWithSubType() {
 		SimpleBean body = new SimpleBean(123L, "foo");
 		MethodParameter type = on(TestController.class).resolveReturnType(Identifiable.class);
 		this.resultHandler.writeBody(body, type, this.exchange).block(Duration.ofSeconds(5));
@@ -170,7 +170,7 @@ public class MessageWriterResultHandlerTests {
 	}
 
 	@Test  // SPR-13318
-	public void jacksonTypeWithSubTypeOfListElement() throws Exception {
+	public void jacksonTypeWithSubTypeOfListElement() {
 
 		MethodParameter returnType = on(TestController.class).resolveReturnType(List.class, Identifiable.class);
 
@@ -181,10 +181,21 @@ public class MessageWriterResultHandlerTests {
 		assertResponseBody("[{\"id\":123,\"name\":\"foo\"},{\"id\":456,\"name\":\"bar\"}]");
 	}
 
+	@Test
+	void jacksonTypeWithSubTypeAndObjectReturnValue() {
+		MethodParameter returnType = on(TestController.class).resolveReturnType(Object.class);
+
+		SimpleBean body = new SimpleBean(123L, "foo");
+		this.resultHandler.writeBody(body, returnType, this.exchange).block(Duration.ofSeconds(5));
+
+		assertThat(this.exchange.getResponse().getHeaders().getContentType()).isEqualTo(APPLICATION_JSON);
+		assertResponseBody("{\"id\":123,\"name\":\"foo\"}");
+	}
+
 
 	private void assertResponseBody(String responseBody) {
 		StepVerifier.create(this.exchange.getResponse().getBody())
-				.consumeNextWith(buf -> assertThat(dumpString(buf, StandardCharsets.UTF_8)).isEqualTo(responseBody))
+				.consumeNextWith(buf -> assertThat(buf.toString(UTF_8)).isEqualTo(responseBody))
 				.expectComplete()
 				.verify();
 	}
@@ -275,13 +286,9 @@ public class MessageWriterResultHandlerTests {
 
 		Completable completable() { return null; }
 
-		io.reactivex.Completable rxJava2Completable() { return null; }
-
 		Flux<Void> fluxVoid() { return null; }
 
 		Observable<Void> observableVoid() { return null; }
-
-		io.reactivex.Observable<Void> rxJava2ObservableVoid() { return null; }
 
 		Flowable<Void> flowableVoid() { return null; }
 
@@ -292,6 +299,8 @@ public class MessageWriterResultHandlerTests {
 		Identifiable identifiable() { return null; }
 
 		List<Identifiable> listIdentifiable() { return null; }
+
+		Object object() { return null; }
 	}
 
 }

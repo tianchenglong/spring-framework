@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.resource;
 
 import java.io.StringWriter;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -36,6 +35,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
@@ -69,8 +69,8 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 	}
 
 
-	@SuppressWarnings("deprecation")
 	@Override
+	@SuppressWarnings("deprecation")
 	public Mono<Resource> transform(ServerWebExchange exchange, Resource inputResource,
 			ResourceTransformerChain transformerChain) {
 
@@ -78,8 +78,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 				.flatMap(outputResource -> {
 					String filename = outputResource.getFilename();
 					if (!"css".equals(StringUtils.getFilenameExtension(filename)) ||
-							inputResource instanceof EncodedResourceResolver.EncodedResource ||
-							inputResource instanceof GzipResourceResolver.GzippedResource) {
+							inputResource instanceof EncodedResourceResolver.EncodedResource) {
 						return Mono.just(outputResource);
 					}
 
@@ -88,9 +87,8 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 							.read(outputResource, bufferFactory, StreamUtils.BUFFER_SIZE);
 					return DataBufferUtils.join(flux)
 							.flatMap(dataBuffer -> {
-								CharBuffer charBuffer = DEFAULT_CHARSET.decode(dataBuffer.asByteBuffer());
+								String cssContent = dataBuffer.toString(DEFAULT_CHARSET);
 								DataBufferUtils.release(dataBuffer);
-								String cssContent = charBuffer.toString();
 								return transformContent(cssContent, outputResource, transformerChain, exchange);
 							});
 				});
@@ -189,7 +187,6 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 				}
 				else {
 					position = extractUnquotedLink(position, content, result);
-
 				}
 			}
 		}
@@ -202,7 +199,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 		}
 
 		/**
-		 * Invoked after a keyword match, after whitespaces removed, and when
+		 * Invoked after a keyword match, after whitespace has been removed, and when
 		 * the next char is neither a single nor double quote.
 		 */
 		protected abstract int extractUnquotedLink(int position, String content,
@@ -220,8 +217,8 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 
 		@Override
 		protected int extractUnquotedLink(int position, String content, Set<ContentChunkInfo> result) {
-			if (content.substring(position, position + 4).equals("url(")) {
-				// Ignore, UrlFunctionContentParser will take care
+			if (content.startsWith("url(", position)) {
+				// Ignore: UrlFunctionLinkParser will handle it.
 			}
 			else if (logger.isTraceEnabled()) {
 				logger.trace("Unexpected syntax for @import link at index " + position);
@@ -284,15 +281,9 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 		}
 
 		@Override
-		public boolean equals(Object other) {
-			if (this == other) {
-				return true;
-			}
-			if (!(other instanceof ContentChunkInfo)) {
-				return false;
-			}
-			ContentChunkInfo otherCci = (ContentChunkInfo) other;
-			return (this.start == otherCci.start && this.end == otherCci.end);
+		public boolean equals(@Nullable Object other) {
+			return (this == other || (other instanceof ContentChunkInfo that &&
+					this.start == that.start && this.end == that.end));
 		}
 
 		@Override

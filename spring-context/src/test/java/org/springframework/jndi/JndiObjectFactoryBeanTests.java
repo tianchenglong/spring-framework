@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@ package org.springframework.jndi;
 import javax.naming.Context;
 import javax.naming.NamingException;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.tests.mock.jndi.ExpectedLookupTemplate;
-import org.springframework.tests.sample.beans.DerivedTestBean;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.sample.beans.TestBean;
+import org.springframework.beans.testfixture.beans.DerivedTestBean;
+import org.springframework.beans.testfixture.beans.ITestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
+import org.springframework.context.testfixture.jndi.ExpectedLookupTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -41,71 +41,71 @@ import static org.mockito.Mockito.verify;
  * @author Juergen Hoeller
  * @author Chris Beams
  */
-public class JndiObjectFactoryBeanTests {
+class JndiObjectFactoryBeanTests {
 
 	@Test
-	public void testNoJndiName() throws NamingException {
+	void testNoJndiName() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		assertThatIllegalArgumentException().isThrownBy(jof::afterPropertiesSet);
 	}
 
 	@Test
-	public void testLookupWithFullNameAndResourceRefTrue() throws Exception {
+	void testLookupWithFullNameAndResourceRefTrue() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("java:comp/env/foo", o));
 		jof.setJndiName("java:comp/env/foo");
 		jof.setResourceRef(true);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == o).isTrue();
+		assertThat(jof.getObject()).isSameAs(o);
 	}
 
 	@Test
-	public void testLookupWithFullNameAndResourceRefFalse() throws Exception {
+	void testLookupWithFullNameAndResourceRefFalse() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("java:comp/env/foo", o));
 		jof.setJndiName("java:comp/env/foo");
 		jof.setResourceRef(false);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == o).isTrue();
+		assertThat(jof.getObject()).isSameAs(o);
 	}
 
 	@Test
-	public void testLookupWithSchemeNameAndResourceRefTrue() throws Exception {
+	void testLookupWithSchemeNameAndResourceRefTrue() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("java:foo", o));
 		jof.setJndiName("java:foo");
 		jof.setResourceRef(true);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == o).isTrue();
+		assertThat(jof.getObject()).isSameAs(o);
 	}
 
 	@Test
-	public void testLookupWithSchemeNameAndResourceRefFalse() throws Exception {
+	void testLookupWithSchemeNameAndResourceRefFalse() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("java:foo", o));
 		jof.setJndiName("java:foo");
 		jof.setResourceRef(false);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == o).isTrue();
+		assertThat(jof.getObject()).isSameAs(o);
 	}
 
 	@Test
-	public void testLookupWithShortNameAndResourceRefTrue() throws Exception {
+	void testLookupWithShortNameAndResourceRefTrue() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("java:comp/env/foo", o));
 		jof.setJndiName("foo");
 		jof.setResourceRef(true);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == o).isTrue();
+		assertThat(jof.getObject()).isSameAs(o);
 	}
 
 	@Test
-	public void testLookupWithShortNameAndResourceRefFalse() throws Exception {
+	void testLookupWithShortNameAndResourceRefFalse() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("java:comp/env/foo", o));
@@ -115,29 +115,29 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithArbitraryNameAndResourceRefFalse() throws Exception {
+	void testLookupWithArbitraryNameAndResourceRefFalse() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		Object o = new Object();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", o));
 		jof.setJndiName("foo");
 		jof.setResourceRef(false);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == o).isTrue();
+		assertThat(jof.getObject()).isSameAs(o);
 	}
 
 	@Test
-	public void testLookupWithExpectedTypeAndMatch() throws Exception {
+	void testLookupWithExpectedTypeAndMatch() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		String s = "";
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", s));
 		jof.setJndiName("foo");
 		jof.setExpectedType(String.class);
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject() == s).isTrue();
+		assertThat(jof.getObject()).isSameAs(s);
 	}
 
 	@Test
-	public void testLookupWithExpectedTypeAndNoMatch() throws Exception {
+	void testLookupWithExpectedTypeAndNoMatch() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", new Object()));
 		jof.setJndiName("foo");
@@ -148,7 +148,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithDefaultObject() throws Exception {
+	void testLookupWithDefaultObject() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", ""));
 		jof.setJndiName("myFoo");
@@ -159,7 +159,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithDefaultObjectAndExpectedType() throws Exception {
+	void testLookupWithDefaultObjectAndExpectedType() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", ""));
 		jof.setJndiName("myFoo");
@@ -170,18 +170,18 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithDefaultObjectAndExpectedTypeConversion() throws Exception {
+	void testLookupWithDefaultObjectAndExpectedTypeConversion() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", ""));
 		jof.setJndiName("myFoo");
 		jof.setExpectedType(Integer.class);
 		jof.setDefaultObject("5");
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject()).isEqualTo(new Integer(5));
+		assertThat(jof.getObject()).isEqualTo(5);
 	}
 
 	@Test
-	public void testLookupWithDefaultObjectAndExpectedTypeConversionViaBeanFactory() throws Exception {
+	void testLookupWithDefaultObjectAndExpectedTypeConversionViaBeanFactory() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", ""));
 		jof.setJndiName("myFoo");
@@ -189,11 +189,11 @@ public class JndiObjectFactoryBeanTests {
 		jof.setDefaultObject("5");
 		jof.setBeanFactory(new DefaultListableBeanFactory());
 		jof.afterPropertiesSet();
-		assertThat(jof.getObject()).isEqualTo(new Integer(5));
+		assertThat(jof.getObject()).isEqualTo(5);
 	}
 
 	@Test
-	public void testLookupWithDefaultObjectAndExpectedTypeNoMatch() throws Exception {
+	void testLookupWithDefaultObjectAndExpectedTypeNoMatch() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", ""));
 		jof.setJndiName("myFoo");
@@ -203,7 +203,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterface() throws Exception {
+	void testLookupWithProxyInterface() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		TestBean tb = new TestBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", tb));
@@ -219,7 +219,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterfaceAndDefaultObject() throws Exception {
+	void testLookupWithProxyInterfaceAndDefaultObject() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		TestBean tb = new TestBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", tb));
@@ -230,7 +230,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterfaceAndLazyLookup() throws Exception {
+	void testLookupWithProxyInterfaceAndLazyLookup() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		final TestBean tb = new TestBean();
 		jof.setJndiTemplate(new JndiTemplate() {
@@ -258,7 +258,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterfaceWithNotCache() throws Exception {
+	void testLookupWithProxyInterfaceWithNotCache() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		final TestBean tb = new TestBean();
 		jof.setJndiTemplate(new JndiTemplate() {
@@ -288,7 +288,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterfaceWithLazyLookupAndNotCache() throws Exception {
+	void testLookupWithProxyInterfaceWithLazyLookupAndNotCache() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		final TestBean tb = new TestBean();
 		jof.setJndiTemplate(new JndiTemplate() {
@@ -322,7 +322,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLazyLookupWithoutProxyInterface() throws NamingException {
+	void testLazyLookupWithoutProxyInterface() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiName("foo");
 		jof.setLookupOnStartup(false);
@@ -330,7 +330,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testNotCacheWithoutProxyInterface() throws NamingException {
+	void testNotCacheWithoutProxyInterface() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		jof.setJndiName("foo");
 		jof.setCache(false);
@@ -339,7 +339,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterfaceAndExpectedTypeAndMatch() throws Exception {
+	void testLookupWithProxyInterfaceAndExpectedTypeAndMatch() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		TestBean tb = new TestBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", tb));
@@ -356,7 +356,7 @@ public class JndiObjectFactoryBeanTests {
 	}
 
 	@Test
-	public void testLookupWithProxyInterfaceAndExpectedTypeAndNoMatch() {
+	void testLookupWithProxyInterfaceAndExpectedTypeAndNoMatch() {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		TestBean tb = new TestBean();
 		jof.setJndiTemplate(new ExpectedLookupTemplate("foo", tb));
@@ -365,14 +365,14 @@ public class JndiObjectFactoryBeanTests {
 		jof.setProxyInterface(ITestBean.class);
 		assertThatExceptionOfType(NamingException.class).isThrownBy(
 				jof::afterPropertiesSet)
-			.withMessageContaining("org.springframework.tests.sample.beans.DerivedTestBean");
+			.withMessageContaining("org.springframework.beans.testfixture.beans.DerivedTestBean");
 	}
 
 	@Test
-	public void testLookupWithExposeAccessContext() throws Exception {
+	void testLookupWithExposeAccessContext() throws Exception {
 		JndiObjectFactoryBean jof = new JndiObjectFactoryBean();
 		TestBean tb = new TestBean();
-		final Context mockCtx = mock(Context.class);
+		final Context mockCtx = mock();
 		given(mockCtx.lookup("foo")).willReturn(tb);
 		jof.setJndiTemplate(new JndiTemplate() {
 			@Override

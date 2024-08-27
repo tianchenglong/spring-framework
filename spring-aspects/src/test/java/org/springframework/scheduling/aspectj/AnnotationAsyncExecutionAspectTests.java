@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,30 +22,31 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.aop.interceptor.SimpleAsyncUncaughtExceptionHandler;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.testfixture.EnabledForTestGroups;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.tests.Assume;
-import org.springframework.tests.TestGroup;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.core.testfixture.TestGroup.LONG_RUNNING;
 
 /**
- * Unit tests for {@link AnnotationAsyncExecutionAspect}.
+ * Tests for {@link AnnotationAsyncExecutionAspect}.
  *
  * @author Ramnivas Laddad
  * @author Stephane Nicoll
  */
+@EnabledForTestGroups(LONG_RUNNING)
 public class AnnotationAsyncExecutionAspectTests {
 
 	private static final long WAIT_TIME = 1000; //milliseconds
@@ -55,17 +56,15 @@ public class AnnotationAsyncExecutionAspectTests {
 	private CountingExecutor executor;
 
 
-	@Before
+	@BeforeEach
 	public void setUp() {
-		Assume.group(TestGroup.PERFORMANCE);
-
 		executor = new CountingExecutor();
 		AnnotationAsyncExecutionAspect.aspectOf().setExecutor(executor);
 	}
 
 
 	@Test
-	public void asyncMethodGetsRoutedAsynchronously() {
+	void asyncMethodGetsRoutedAsynchronously() {
 		ClassWithoutAsyncAnnotation obj = new ClassWithoutAsyncAnnotation();
 		obj.incrementAsync();
 		executor.waitForCompletion();
@@ -75,7 +74,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	}
 
 	@Test
-	public void asyncMethodReturningFutureGetsRoutedAsynchronouslyAndReturnsAFuture() throws InterruptedException, ExecutionException {
+	void asyncMethodReturningFutureGetsRoutedAsynchronouslyAndReturnsAFuture() throws InterruptedException, ExecutionException {
 		ClassWithoutAsyncAnnotation obj = new ClassWithoutAsyncAnnotation();
 		Future<Integer> future = obj.incrementReturningAFuture();
 		// No need to executor.waitForCompletion() as future.get() will have the same effect
@@ -86,7 +85,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	}
 
 	@Test
-	public void syncMethodGetsRoutedSynchronously() {
+	void syncMethodGetsRoutedSynchronously() {
 		ClassWithoutAsyncAnnotation obj = new ClassWithoutAsyncAnnotation();
 		obj.increment();
 		assertThat(obj.counter).isEqualTo(1);
@@ -95,9 +94,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	}
 
 	@Test
-	public void voidMethodInAsyncClassGetsRoutedAsynchronously() {
-		Assume.group(TestGroup.PERFORMANCE);
-
+	void voidMethodInAsyncClassGetsRoutedAsynchronously() {
 		ClassWithAsyncAnnotation obj = new ClassWithAsyncAnnotation();
 		obj.increment();
 		executor.waitForCompletion();
@@ -107,7 +104,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	}
 
 	@Test
-	public void methodReturningFutureInAsyncClassGetsRoutedAsynchronouslyAndReturnsAFuture() throws InterruptedException, ExecutionException {
+	void methodReturningFutureInAsyncClassGetsRoutedAsynchronouslyAndReturnsAFuture() throws InterruptedException, ExecutionException {
 		ClassWithAsyncAnnotation obj = new ClassWithAsyncAnnotation();
 		Future<Integer> future = obj.incrementReturningAFuture();
 		assertThat(future.get().intValue()).isEqualTo(5);
@@ -118,7 +115,7 @@ public class AnnotationAsyncExecutionAspectTests {
 
 	/*
 	@Test
-	public void methodReturningNonVoidNonFutureInAsyncClassGetsRoutedSynchronously() {
+	void methodReturningNonVoidNonFutureInAsyncClassGetsRoutedSynchronously() {
 		ClassWithAsyncAnnotation obj = new ClassWithAsyncAnnotation();
 		int returnValue = obj.return5();
 		assertEquals(5, returnValue);
@@ -128,7 +125,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	*/
 
 	@Test
-	public void qualifiedAsyncMethodsAreRoutedToCorrectExecutor() throws InterruptedException, ExecutionException {
+	void qualifiedAsyncMethodsAreRoutedToCorrectExecutor() throws InterruptedException, ExecutionException {
 		DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 		beanFactory.registerBeanDefinition("e1", new RootBeanDefinition(ThreadPoolTaskExecutor.class));
 		AnnotationAsyncExecutionAspect.aspectOf().setBeanFactory(beanFactory);
@@ -147,7 +144,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	}
 
 	@Test
-	public void exceptionHandlerCalled() {
+	void exceptionHandlerCalled() {
 		Method m = ReflectionUtils.findMethod(ClassWithException.class, "failWithVoid");
 		TestableAsyncUncaughtExceptionHandler exceptionHandler = new TestableAsyncUncaughtExceptionHandler();
 		AnnotationAsyncExecutionAspect.aspectOf().setExceptionHandler(exceptionHandler);
@@ -164,7 +161,7 @@ public class AnnotationAsyncExecutionAspectTests {
 	}
 
 	@Test
-	public void exceptionHandlerNeverThrowsUnexpectedException() {
+	void exceptionHandlerNeverThrowsUnexpectedException() {
 		Method m = ReflectionUtils.findMethod(ClassWithException.class, "failWithVoid");
 		TestableAsyncUncaughtExceptionHandler exceptionHandler = new TestableAsyncUncaughtExceptionHandler(true);
 		AnnotationAsyncExecutionAspect.aspectOf().setExceptionHandler(exceptionHandler);
@@ -224,7 +221,7 @@ public class AnnotationAsyncExecutionAspectTests {
 
 		@Async public Future<Integer> incrementReturningAFuture() {
 			counter++;
-			return new AsyncResult<Integer>(5);
+			return new AsyncResult<>(5);
 		}
 
 		/**
@@ -259,7 +256,7 @@ public class AnnotationAsyncExecutionAspectTests {
 
 		public Future<Integer> incrementReturningAFuture() {
 			counter++;
-			return new AsyncResult<Integer>(5);
+			return new AsyncResult<>(5);
 		}
 	}
 
@@ -268,12 +265,12 @@ public class AnnotationAsyncExecutionAspectTests {
 
 		@Async
 		public Future<Thread> defaultWork() {
-			return new AsyncResult<Thread>(Thread.currentThread());
+			return new AsyncResult<>(Thread.currentThread());
 		}
 
 		@Async("e1")
 		public ListenableFuture<Thread> e1Work() {
-			return new AsyncResult<Thread>(Thread.currentThread());
+			return new AsyncResult<>(Thread.currentThread());
 		}
 
 		@Async("e1")

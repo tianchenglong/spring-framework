@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -37,15 +37,15 @@ import static org.mockito.Mockito.mock;
  *
  * @author Rossen Stoyanchev
  */
-public class ChannelInterceptorTests {
+class ChannelInterceptorTests {
 
 	private ExecutorSubscribableChannel channel;
 
 	private TestMessageHandler messageHandler;
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 		this.channel = new ExecutorSubscribableChannel();
 		this.messageHandler = new TestMessageHandler();
 		this.channel.subscribe(this.messageHandler);
@@ -53,14 +53,14 @@ public class ChannelInterceptorTests {
 
 
 	@Test
-	public void preSendInterceptorReturningModifiedMessage() {
-		Message<?> expected = mock(Message.class);
+	void preSendInterceptorReturningModifiedMessage() {
+		Message<?> expected = mock();
 		PreSendInterceptor interceptor = new PreSendInterceptor();
 		interceptor.setMessageToReturn(expected);
 		this.channel.addInterceptor(interceptor);
 		this.channel.send(MessageBuilder.withPayload("test").build());
 
-		assertThat(this.messageHandler.getMessages().size()).isEqualTo(1);
+		assertThat(this.messageHandler.getMessages()).hasSize(1);
 		Message<?> result = this.messageHandler.getMessages().get(0);
 
 		assertThat(result).isNotNull();
@@ -69,7 +69,7 @@ public class ChannelInterceptorTests {
 	}
 
 	@Test
-	public void preSendInterceptorReturningNull() {
+	void preSendInterceptorReturningNull() {
 		PreSendInterceptor interceptor1 = new PreSendInterceptor();
 		NullReturningPreSendInterceptor interceptor2 = new NullReturningPreSendInterceptor();
 		this.channel.addInterceptor(interceptor1);
@@ -79,15 +79,15 @@ public class ChannelInterceptorTests {
 
 		assertThat(interceptor1.getCounter().get()).isEqualTo(1);
 		assertThat(interceptor2.getCounter().get()).isEqualTo(1);
-		assertThat(this.messageHandler.getMessages().size()).isEqualTo(0);
+		assertThat(this.messageHandler.getMessages()).isEmpty();
 		assertThat(interceptor1.wasAfterCompletionInvoked()).isTrue();
 		assertThat(interceptor2.wasAfterCompletionInvoked()).isFalse();
 	}
 
 	@Test
-	public void postSendInterceptorMessageWasSent() {
-		final AtomicBoolean preSendInvoked = new AtomicBoolean(false);
-		final AtomicBoolean completionInvoked = new AtomicBoolean(false);
+	void postSendInterceptorMessageWasSent() {
+		final AtomicBoolean preSendInvoked = new AtomicBoolean();
+		final AtomicBoolean completionInvoked = new AtomicBoolean();
 		this.channel.addInterceptor(new ChannelInterceptor() {
 			@Override
 			public void postSend(Message<?> message, MessageChannel channel, boolean sent) {
@@ -112,15 +112,15 @@ public class ChannelInterceptorTests {
 	}
 
 	@Test
-	public void postSendInterceptorMessageWasNotSent() {
+	void postSendInterceptorMessageWasNotSent() {
 		final AbstractMessageChannel testChannel = new AbstractMessageChannel() {
 			@Override
 			protected boolean sendInternal(Message<?> message, long timeout) {
 				return false;
 			}
 		};
-		final AtomicBoolean preSendInvoked = new AtomicBoolean(false);
-		final AtomicBoolean completionInvoked = new AtomicBoolean(false);
+		final AtomicBoolean preSendInvoked = new AtomicBoolean();
+		final AtomicBoolean completionInvoked = new AtomicBoolean();
 		testChannel.addInterceptor(new ChannelInterceptor() {
 			@Override
 			public void postSend(Message<?> message, MessageChannel channel, boolean sent) {
@@ -145,7 +145,7 @@ public class ChannelInterceptorTests {
 	}
 
 	@Test
-	public void afterCompletionWithSendException() {
+	void afterCompletionWithSendException() {
 		final AbstractMessageChannel testChannel = new AbstractMessageChannel() {
 			@Override
 			protected boolean sendInternal(Message<?> message, long timeout) {
@@ -167,7 +167,7 @@ public class ChannelInterceptorTests {
 	}
 
 	@Test
-	public void afterCompletionWithPreSendException() {
+	void afterCompletionWithPreSendException() {
 		PreSendInterceptor interceptor1 = new PreSendInterceptor();
 		PreSendInterceptor interceptor2 = new PreSendInterceptor();
 		interceptor2.setExceptionToRaise(new RuntimeException("Simulated exception"));

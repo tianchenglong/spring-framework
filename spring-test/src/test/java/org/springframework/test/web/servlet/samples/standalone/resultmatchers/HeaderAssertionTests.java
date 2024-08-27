@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -73,7 +73,7 @@ public class HeaderAssertionTests {
 	private SimpleDateFormat dateFormat;
 
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		this.dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 		this.dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -103,7 +103,6 @@ public class HeaderAssertionTests {
 		this.mockMvc.perform(get("/persons/1")).andExpect(header().stringValues(VARY, "foo", "bar"));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void multiStringHeaderValueWithMatchers() throws Exception {
 		this.mockMvc.perform(get("/persons/1"))
@@ -159,7 +158,7 @@ public class HeaderAssertionTests {
 	}
 
 	@Test
-	public void existsFail() throws Exception {
+	public void existsFail() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				this.mockMvc.perform(get("/persons/1")).andExpect(header().exists("X-Custom-Header")));
 	}
@@ -170,13 +169,13 @@ public class HeaderAssertionTests {
 	}
 
 	@Test // SPR-10771
-	public void doesNotExistFail() throws Exception {
+	public void doesNotExistFail() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				this.mockMvc.perform(get("/persons/1")).andExpect(header().doesNotExist(LAST_MODIFIED)));
 	}
 
 	@Test
-	public void longValueWithIncorrectResponseHeaderValue() throws Exception {
+	public void longValueWithIncorrectResponseHeaderValue() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				this.mockMvc.perform(get("/persons/1")).andExpect(header().longValue("X-Rate-Limiting", 1)));
 	}
@@ -214,7 +213,8 @@ public class HeaderAssertionTests {
 	}
 
 	private void assertMessageContains(AssertionError error, String expected) {
-		assertThat(error.getMessage().contains(expected)).as("Failure message should contain [" + expected + "], actual is [" + error.getMessage() + "]").isTrue();
+		assertThat(error.getMessage()).as("Failure message should contain [" + expected + "], actual is [" + error.getMessage() + "]")
+				.contains(expected);
 	}
 
 

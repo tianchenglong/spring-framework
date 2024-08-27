@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.IntStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toCollection;
@@ -41,10 +41,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @since 5.0
  * @see org.springframework.test.context.junit4.concurrency.SpringJUnit4ConcurrencyTests
  */
-public class TestContextConcurrencyTests {
+class TestContextConcurrencyTests {
 
-	private static Set<String> expectedMethods = stream(TestCase.class.getDeclaredMethods()).map(
-		Method::getName).collect(toCollection(TreeSet::new));
+	private static final Set<String> expectedMethods = stream(TestCase.class.getDeclaredMethods())
+			.map(Method::getName)
+			.collect(toCollection(TreeSet::new));
 
 	private static final Set<String> actualMethods = Collections.synchronizedSet(new TreeSet<>());
 
@@ -52,7 +53,7 @@ public class TestContextConcurrencyTests {
 
 
 	@Test
-	public void invokeTestContextManagerFromConcurrentThreads() {
+	void invokeTestContextManagerFromConcurrentThreads() {
 		TestContextManager tcm = new TestContextManager(TestCase.class);
 
 		// Run the actual test several times in order to increase the chance of threads
@@ -76,7 +77,7 @@ public class TestContextConcurrencyTests {
 			});
 			assertThat(actualMethods).isEqualTo(expectedMethods);
 		});
-		assertThat(tcm.getTestContext().attributeNames().length).isEqualTo(0);
+		assertThat(tcm.getTestContext().attributeNames()).isEmpty();
 	}
 
 
@@ -117,11 +118,11 @@ public class TestContextConcurrencyTests {
 
 	private static class TrackingListener implements TestExecutionListener {
 
-		private ThreadLocal<String> methodName = new ThreadLocal<>();
+		private final ThreadLocal<String> methodName = new ThreadLocal<>();
 
 
 		@Override
-		public void beforeTestMethod(TestContext testContext) throws Exception {
+		public void beforeTestMethod(TestContext testContext) {
 			String name = testContext.getTestMethod().getName();
 			actualMethods.add(name);
 			testContext.setAttribute("method", name);
@@ -129,7 +130,7 @@ public class TestContextConcurrencyTests {
 		}
 
 		@Override
-		public void afterTestMethod(TestContext testContext) throws Exception {
+		public void afterTestMethod(TestContext testContext) {
 			assertThat(testContext.getAttribute("method")).isEqualTo(this.methodName.get());
 		}
 

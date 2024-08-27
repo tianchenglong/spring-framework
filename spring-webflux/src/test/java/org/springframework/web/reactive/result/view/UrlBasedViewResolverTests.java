@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -33,27 +33,67 @@ import org.springframework.web.server.ServerWebExchange;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link UrlBasedViewResolver}.
+ * Tests for {@link UrlBasedViewResolver}.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
+ * @author Sam Brannen
  */
-public class UrlBasedViewResolverTests {
+class UrlBasedViewResolverTests {
 
-	private UrlBasedViewResolver resolver;
+	private final UrlBasedViewResolver resolver = new UrlBasedViewResolver();
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 		StaticApplicationContext context = new StaticApplicationContext();
 		context.refresh();
-		this.resolver = new UrlBasedViewResolver();
 		this.resolver.setApplicationContext(context);
 	}
 
+	@Test
+	void urlBasedViewResolverOverridesCustomRequestContextAttributeWithNonNullValue() {
+		assertThat(new TestView().getRequestContextAttribute())
+			.as("requestContextAttribute when instantiated directly")
+			.isEqualTo("testRequestContext");
+
+		this.resolver.setViewClass(TestView.class);
+		this.resolver.setRequestContextAttribute("viewResolverRequestContext");
+
+		Mono<View> mono = this.resolver.resolveViewName("example", Locale.getDefault());
+		StepVerifier.create(mono)
+				.consumeNextWith(view -> {
+					assertThat(view).isInstanceOf(TestView.class);
+					assertThat(((TestView) view).getRequestContextAttribute())
+						.as("requestContextAttribute when instantiated dynamically by UrlBasedViewResolver")
+						.isEqualTo("viewResolverRequestContext");
+				})
+				.expectComplete()
+				.verify(Duration.ZERO);
+	}
 
 	@Test
-	public void viewNames() throws Exception {
+	void urlBasedViewResolverDoesNotOverrideCustomRequestContextAttributeWithNull() {
+		assertThat(new TestView().getRequestContextAttribute())
+			.as("requestContextAttribute when instantiated directly")
+			.isEqualTo("testRequestContext");
+
+		this.resolver.setViewClass(TestView.class);
+
+		Mono<View> mono = this.resolver.resolveViewName("example", Locale.getDefault());
+		StepVerifier.create(mono)
+				.consumeNextWith(view -> {
+					assertThat(view).isInstanceOf(TestView.class);
+					assertThat(((TestView) view).getRequestContextAttribute())
+						.as("requestContextAttribute when instantiated dynamically by UrlBasedViewResolver")
+						.isEqualTo("testRequestContext");
+				})
+				.expectComplete()
+				.verify(Duration.ZERO);
+	}
+
+	@Test
+	void viewNames() {
 		this.resolver.setViewClass(TestView.class);
 		this.resolver.setViewNames("my*");
 
@@ -65,7 +105,7 @@ public class UrlBasedViewResolverTests {
 	}
 
 	@Test
-	public void redirectView() throws Exception {
+	void redirectView() {
 		Mono<View> mono = this.resolver.resolveViewName("redirect:foo", Locale.US);
 
 		StepVerifier.create(mono)
@@ -80,7 +120,7 @@ public class UrlBasedViewResolverTests {
 	}
 
 	@Test
-	public void customizedRedirectView() throws Exception {
+	void customizedRedirectView() {
 		this.resolver.setRedirectViewProvider(url -> new RedirectView(url, HttpStatus.FOUND));
 		Mono<View> mono = this.resolver.resolveViewName("redirect:foo", Locale.US);
 
@@ -98,8 +138,12 @@ public class UrlBasedViewResolverTests {
 
 	private static class TestView extends AbstractUrlBasedView {
 
+		public TestView() {
+			setRequestContextAttribute("testRequestContext");
+		}
+
 		@Override
-		public boolean checkResourceExists(Locale locale) throws Exception {
+		public boolean checkResourceExists(Locale locale) {
 			return true;
 		}
 

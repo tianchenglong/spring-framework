@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -31,10 +31,10 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Sam Brannen
  * @since 21.11.2003
  */
-public class MethodInvokerTests {
+class MethodInvokerTests {
 
 	@Test
-	public void plainMethodInvoker() throws Exception {
+	void plainMethodInvoker() throws Exception {
 		// sanity check: singleton, non-static should work
 		TestClass1 tc1 = new TestClass1();
 		MethodInvoker mi = new MethodInvoker();
@@ -42,7 +42,7 @@ public class MethodInvokerTests {
 		mi.setTargetMethod("method1");
 		mi.prepare();
 		Integer i = (Integer) mi.invoke();
-		assertThat(i.intValue()).isEqualTo(1);
+		assertThat(i).isEqualTo(1);
 
 		// defensive check: singleton, non-static should work with null array
 		tc1 = new TestClass1();
@@ -52,7 +52,7 @@ public class MethodInvokerTests {
 		mi.setArguments((Object[]) null);
 		mi.prepare();
 		i = (Integer) mi.invoke();
-		assertThat(i.intValue()).isEqualTo(1);
+		assertThat(i).isEqualTo(1);
 
 		// sanity check: check that argument count matching works
 		mi = new MethodInvoker();
@@ -80,7 +80,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void stringWithMethodInvoker() throws Exception {
+	void stringWithMethodInvoker() {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");
@@ -91,7 +91,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void purchaserWithMethodInvoker() throws Exception {
+	void purchaserWithMethodInvoker() throws Exception {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");
@@ -102,7 +102,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void shopperWithMethodInvoker() throws Exception {
+	void shopperWithMethodInvoker() throws Exception {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");
@@ -113,7 +113,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void salesmanWithMethodInvoker() throws Exception {
+	void salesmanWithMethodInvoker() throws Exception {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");
@@ -124,7 +124,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void customerWithMethodInvoker() throws Exception {
+	void customerWithMethodInvoker() throws Exception {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");
@@ -135,7 +135,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void regularWithMethodInvoker() throws Exception {
+	void regularWithMethodInvoker() throws Exception {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");
@@ -146,7 +146,7 @@ public class MethodInvokerTests {
 	}
 
 	@Test
-	public void vipWithMethodInvoker() throws Exception {
+	void vipWithMethodInvoker() throws Exception {
 		MethodInvoker methodInvoker = new MethodInvoker();
 		methodInvoker.setTargetObject(new Greeter());
 		methodInvoker.setTargetMethod("greet");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,31 +20,43 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.security.Principal;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.codec.DecodingException;
 import org.springframework.core.codec.Hints;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRange;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.HttpMessageReader;
 import org.springframework.http.codec.multipart.Part;
-import org.springframework.http.server.PathContainer;
+import org.springframework.http.server.RequestPath;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.support.WebExchangeDataBinder;
 import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.UnsupportedMediaTypeException;
@@ -67,7 +79,8 @@ class DefaultServerRequest implements ServerRequest {
 			ex -> (ex.getContentType() != null ?
 					new UnsupportedMediaTypeStatusException(
 							ex.getContentType(), ex.getSupportedMediaTypes(), ex.getBodyType()) :
-					new UnsupportedMediaTypeStatusException(ex.getMessage()));
+					new UnsupportedMediaTypeStatusException(
+							ex.getMessage(), ex.getSupportedMediaTypes()));
 
 	private static final Function<DecodingException, ServerWebInputException> DECODING_MAPPER =
 			ex -> new ServerWebInputException("Failed to read HTTP message", null, ex);
@@ -82,14 +95,37 @@ class DefaultServerRequest implements ServerRequest {
 
 	DefaultServerRequest(ServerWebExchange exchange, List<HttpMessageReader<?>> messageReaders) {
 		this.exchange = exchange;
-		this.messageReaders = Collections.unmodifiableList(new ArrayList<>(messageReaders));
+		this.messageReaders = List.copyOf(messageReaders);
 		this.headers = new DefaultHeaders();
 	}
 
+	static Mono<ServerResponse> checkNotModified(ServerWebExchange exchange, @Nullable Instant lastModified,
+			@Nullable String etag) {
+
+		if (lastModified == null) {
+			lastModified = Instant.MIN;
+		}
+
+		if (exchange.checkNotModified(etag, lastModified)) {
+			HttpStatusCode statusCode = exchange.getResponse().getStatusCode();
+			return ServerResponse.status(statusCode != null ? statusCode : HttpStatus.OK)
+					.headers(headers -> headers.addAll(exchange.getResponse().getHeaders()))
+					.build();
+		}
+		else {
+			return Mono.empty();
+		}
+	}
 
 	@Override
+	public HttpMethod method() {
+		return request().getMethod();
+	}
+
+	@Override
+	@Deprecated
 	public String methodName() {
-		return request().getMethodValue();
+		return request().getMethod().name();
 	}
 
 	@Override
@@ -103,7 +139,7 @@ class DefaultServerRequest implements ServerRequest {
 	}
 
 	@Override
-	public PathContainer pathContainer() {
+	public RequestPath requestPath() {
 		return request().getPath();
 	}
 
@@ -120,6 +156,11 @@ class DefaultServerRequest implements ServerRequest {
 	@Override
 	public Optional<InetSocketAddress> remoteAddress() {
 		return Optional.ofNullable(request().getRemoteAddress());
+	}
+
+	@Override
+	public Optional<InetSocketAddress> localAddress() {
+		return Optional.ofNullable(request().getLocalAddress());
 	}
 
 	@Override
@@ -171,8 +212,10 @@ class DefaultServerRequest implements ServerRequest {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T> Flux<T> bodyToFlux(Class<? extends T> elementClass) {
-		Flux<T> flux = body(BodyExtractors.toFlux(elementClass));
+		Flux<T> flux = (elementClass.equals(DataBuffer.class) ?
+				(Flux<T>) request().getBody() : body(BodyExtractors.toFlux(elementClass)));
 		return flux.onErrorMap(UnsupportedMediaTypeException.class, ERROR_MAPPER)
 				.onErrorMap(DecodingException.class, DECODING_MAPPER);
 	}
@@ -182,6 +225,33 @@ class DefaultServerRequest implements ServerRequest {
 		Flux<T> flux = body(BodyExtractors.toFlux(typeReference));
 		return flux.onErrorMap(UnsupportedMediaTypeException.class, ERROR_MAPPER)
 				.onErrorMap(DecodingException.class, DECODING_MAPPER);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> bind(Class<T> bindType, Consumer<WebDataBinder> dataBinderCustomizer) {
+		Assert.notNull(bindType, "BindType must not be null");
+		Assert.notNull(dataBinderCustomizer, "DataBinderCustomizer must not be null");
+
+		return Mono.defer(() -> {
+			WebExchangeDataBinder dataBinder = new WebExchangeDataBinder(null);
+			dataBinder.setTargetType(ResolvableType.forClass(bindType));
+			dataBinderCustomizer.accept(dataBinder);
+
+			ServerWebExchange exchange = exchange();
+			return dataBinder.construct(exchange)
+					.then(dataBinder.bind(exchange))
+					.then(Mono.defer(() -> {
+						BindingResult bindingResult = dataBinder.getBindingResult();
+						if (bindingResult.hasErrors()) {
+							return Mono.error(new BindException(bindingResult));
+						}
+						else {
+							T result = (T) bindingResult.getTarget();
+							return Mono.justOrEmpty(result);
+						}
+					}));
+		});
 	}
 
 	@Override
@@ -237,60 +307,60 @@ class DefaultServerRequest implements ServerRequest {
 
 	private class DefaultHeaders implements Headers {
 
-		private HttpHeaders delegate() {
-			return request().getHeaders();
-		}
+		private final HttpHeaders httpHeaders =
+				HttpHeaders.readOnlyHttpHeaders(request().getHeaders());
 
 		@Override
 		public List<MediaType> accept() {
-			return delegate().getAccept();
+			return this.httpHeaders.getAccept();
 		}
 
 		@Override
 		public List<Charset> acceptCharset() {
-			return delegate().getAcceptCharset();
+			return this.httpHeaders.getAcceptCharset();
 		}
 
 		@Override
 		public List<Locale.LanguageRange> acceptLanguage() {
-			return delegate().getAcceptLanguage();
+			return this.httpHeaders.getAcceptLanguage();
 		}
 
 		@Override
 		public OptionalLong contentLength() {
-			long value = delegate().getContentLength();
+			long value = this.httpHeaders.getContentLength();
 			return (value != -1 ? OptionalLong.of(value) : OptionalLong.empty());
 		}
 
 		@Override
 		public Optional<MediaType> contentType() {
-			return Optional.ofNullable(delegate().getContentType());
+			return Optional.ofNullable(this.httpHeaders.getContentType());
 		}
 
 		@Override
+		@Nullable
 		public InetSocketAddress host() {
-			return delegate().getHost();
+			return this.httpHeaders.getHost();
 		}
 
 		@Override
 		public List<HttpRange> range() {
-			return delegate().getRange();
+			return this.httpHeaders.getRange();
 		}
 
 		@Override
 		public List<String> header(String headerName) {
-			List<String> headerValues = delegate().get(headerName);
+			List<String> headerValues = this.httpHeaders.get(headerName);
 			return (headerValues != null ? headerValues : Collections.emptyList());
 		}
 
 		@Override
 		public HttpHeaders asHttpHeaders() {
-			return HttpHeaders.readOnlyHttpHeaders(delegate());
+			return this.httpHeaders;
 		}
 
 		@Override
 		public String toString() {
-			return delegate().toString();
+			return this.httpHeaders.toString();
 		}
 	}
 

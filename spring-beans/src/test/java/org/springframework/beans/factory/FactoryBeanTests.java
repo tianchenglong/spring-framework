@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,25 +20,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Component;
+import org.springframework.core.testfixture.stereotype.Component;
 import org.springframework.util.Assert;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.tests.TestResourceUtils.qualifiedResource;
+import static org.springframework.core.testfixture.io.ResourceTestUtils.qualifiedResource;
 
 /**
  * @author Rob Harrop
  * @author Juergen Hoeller
  * @author Chris Beams
  */
-public class FactoryBeanTests {
+class FactoryBeanTests {
 
 	private static final Class<?> CLASS = FactoryBeanTests.class;
 	private static final Resource RETURNS_NULL_CONTEXT = qualifiedResource(CLASS, "returnsNull.xml");
@@ -48,7 +48,7 @@ public class FactoryBeanTests {
 
 
 	@Test
-	public void testFactoryBeanReturnsNull() throws Exception {
+	void testFactoryBeanReturnsNull() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(factory).loadBeanDefinitions(RETURNS_NULL_CONTEXT);
 
@@ -56,7 +56,7 @@ public class FactoryBeanTests {
 	}
 
 	@Test
-	public void testFactoryBeansWithAutowiring() throws Exception {
+	void testFactoryBeansWithAutowiring() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(factory).loadBeanDefinitions(WITH_AUTOWIRING_CONTEXT);
 
@@ -77,7 +77,7 @@ public class FactoryBeanTests {
 	}
 
 	@Test
-	public void testFactoryBeansWithIntermediateFactoryBeanAutowiringFailure() throws Exception {
+	void testFactoryBeansWithIntermediateFactoryBeanAutowiringFailure() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(factory).loadBeanDefinitions(WITH_AUTOWIRING_CONTEXT);
 
@@ -92,21 +92,21 @@ public class FactoryBeanTests {
 	}
 
 	@Test
-	public void testAbstractFactoryBeanViaAnnotation() throws Exception {
+	void testAbstractFactoryBeanViaAnnotation() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(factory).loadBeanDefinitions(ABSTRACT_CONTEXT);
 		factory.getBeansWithAnnotation(Component.class);
 	}
 
 	@Test
-	public void testAbstractFactoryBeanViaType() throws Exception {
+	void testAbstractFactoryBeanViaType() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(factory).loadBeanDefinitions(ABSTRACT_CONTEXT);
 		factory.getBeansOfType(AbstractFactoryBean.class);
 	}
 
 	@Test
-	public void testCircularReferenceWithPostProcessor() {
+	void testCircularReferenceWithPostProcessor() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(factory).loadBeanDefinitions(CIRCULAR_CONTEXT);
 
@@ -284,11 +284,7 @@ public class FactoryBeanTests {
 			if (bean instanceof FactoryBean) {
 				return bean;
 			}
-			AtomicInteger c = count.get(beanName);
-			if (c == null) {
-				c = new AtomicInteger(0);
-				count.put(beanName, c);
-			}
+			AtomicInteger c = count.computeIfAbsent(beanName, k -> new AtomicInteger());
 			c.incrementAndGet();
 			return bean;
 		}

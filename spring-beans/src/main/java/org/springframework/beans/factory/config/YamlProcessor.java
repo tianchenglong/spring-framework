@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,26 +25,37 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.composer.ComposerException;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.inspector.TagInspector;
+import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.reader.UnicodeReader;
+import org.yaml.snakeyaml.representer.Representer;
 
 import org.springframework.core.CollectionFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
  * Base class for YAML factories.
  *
- * <p>Requires SnakeYAML 1.18 or higher, as of Spring Framework 5.0.6.
+ * <p>Requires SnakeYAML 2.0 or higher, as of Spring Framework 6.1.
  *
  * @author Dave Syer
  * @author Juergen Hoeller
+ * @author Sam Brannen
+ * @author Brian Clozel
  * @since 4.1
  */
 public abstract class YamlProcessor {
@@ -58,6 +69,8 @@ public abstract class YamlProcessor {
 	private List<DocumentMatcher> documentMatchers = Collections.emptyList();
 
 	private boolean matchDefault = true;
+
+	private Set<String> supportedTypes = Collections.emptySet();
 
 
 	/**
@@ -76,7 +89,7 @@ public abstract class YamlProcessor {
 	 * </pre>
 	 * when mapped with
 	 * <pre class="code">
-	 * setDocumentMatchers(properties ->
+	 * setDocumentMatchers(properties -&gt;
 	 *     ("prod".equals(properties.getProperty("environment")) ? MatchStatus.FOUND : MatchStatus.NOT_FOUND));
 	 * </pre>
 	 * would end up as
@@ -87,7 +100,7 @@ public abstract class YamlProcessor {
 	 * </pre>
 	 */
 	public void setDocumentMatchers(DocumentMatcher... matchers) {
-		this.documentMatchers = Arrays.asList(matchers);
+		this.documentMatchers = List.of(matchers);
 	}
 
 	/**
@@ -117,13 +130,35 @@ public abstract class YamlProcessor {
 		this.resources = resources;
 	}
 
+	/**
+	 * Set the supported types that can be loaded from YAML documents.
+	 * <p>If no supported types are configured, only Java standard classes
+	 * (as defined in {@link org.yaml.snakeyaml.constructor.SafeConstructor})
+	 * encountered in YAML documents will be supported.
+	 * If an unsupported type is encountered, a {@link ComposerException}
+	 * will be thrown when the corresponding YAML node is processed.
+	 * @param supportedTypes the supported types, or an empty array to clear the
+	 * supported types
+	 * @since 5.1.16
+	 * @see #createYaml()
+	 */
+	public void setSupportedTypes(Class<?>... supportedTypes) {
+		if (ObjectUtils.isEmpty(supportedTypes)) {
+			this.supportedTypes = Collections.emptySet();
+		}
+		else {
+			Assert.noNullElements(supportedTypes, "'supportedTypes' must not contain null elements");
+			this.supportedTypes = Arrays.stream(supportedTypes).map(Class::getName)
+					.collect(Collectors.toUnmodifiableSet());
+		}
+	}
 
 	/**
 	 * Provide an opportunity for subclasses to process the Yaml parsed from the supplied
 	 * resources. Each resource is parsed in turn and the documents inside checked against
 	 * the {@link #setDocumentMatchers(DocumentMatcher...) matchers}. If a document
 	 * matches it is passed into the callback, along with its representation as Properties.
-	 * Depending on the {@link #setResolutionMethod(ResolutionMethod)} not all of the
+	 * Depending on the {@link #setResolutionMethod(ResolutionMethod)} not all the
 	 * documents will be parsed.
 	 * @param callback a callback to delegate to once matching documents are found
 	 * @see #createYaml()
@@ -141,13 +176,21 @@ public abstract class YamlProcessor {
 	/**
 	 * Create the {@link Yaml} instance to use.
 	 * <p>The default implementation sets the "allowDuplicateKeys" flag to {@code false},
-	 * enabling built-in duplicate key handling in SnakeYAML 1.18+.
+	 * enabling built-in duplicate key handling.
+	 * <p>If custom {@linkplain #setSupportedTypes supported types} have been configured,
+	 * the default implementation creates a {@code Yaml} instance that filters out
+	 * unsupported types encountered in YAML documents.
+	 * If an unsupported type is encountered, a {@link ComposerException} will be
+	 * thrown when the node is processed.
 	 * @see LoaderOptions#setAllowDuplicateKeys(boolean)
 	 */
 	protected Yaml createYaml() {
-		LoaderOptions options = new LoaderOptions();
-		options.setAllowDuplicateKeys(false);
-		return new Yaml(options);
+		LoaderOptions loaderOptions = new LoaderOptions();
+		loaderOptions.setAllowDuplicateKeys(false);
+		loaderOptions.setTagInspector(new SupportedTagInspector());
+		DumperOptions dumperOptions = new DumperOptions();
+		return new Yaml(new Constructor(loaderOptions), new Representer(dumperOptions),
+				dumperOptions, loaderOptions);
 	}
 
 	private boolean process(MatchCallback callback, Yaml yaml, Resource resource) {
@@ -187,17 +230,16 @@ public abstract class YamlProcessor {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	private Map<String, Object> asMap(Object object) {
 		// YAML can have numbers as keys
 		Map<String, Object> result = new LinkedHashMap<>();
-		if (!(object instanceof Map)) {
+		if (!(object instanceof Map map)) {
 			// A document can be a text literal
 			result.put("document", object);
 			return result;
 		}
 
-		Map<Object, Object> map = (Map<Object, Object>) object;
 		map.forEach((key, value) -> {
 			if (value instanceof Map) {
 				value = asMap(value);
@@ -267,6 +309,7 @@ public abstract class YamlProcessor {
 		return result;
 	}
 
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	private void buildFlattenedMap(Map<String, Object> result, Map<String, Object> source, @Nullable String path) {
 		source.forEach((key, value) -> {
 			if (StringUtils.hasText(path)) {
@@ -280,16 +323,12 @@ public abstract class YamlProcessor {
 			if (value instanceof String) {
 				result.put(key, value);
 			}
-			else if (value instanceof Map) {
+			else if (value instanceof Map map) {
 				// Need a compound key
-				@SuppressWarnings("unchecked")
-				Map<String, Object> map = (Map<String, Object>) value;
 				buildFlattenedMap(result, map, key);
 			}
-			else if (value instanceof Collection) {
+			else if (value instanceof Collection collection) {
 				// Need a compound key
-				@SuppressWarnings("unchecked")
-				Collection<Object> collection = (Collection<Object>) value;
 				if (collection.isEmpty()) {
 					result.put(key, "");
 				}
@@ -311,6 +350,7 @@ public abstract class YamlProcessor {
 	/**
 	 * Callback interface used to process the YAML parsing results.
 	 */
+	@FunctionalInterface
 	public interface MatchCallback {
 
 		/**
@@ -327,6 +367,7 @@ public abstract class YamlProcessor {
 	/**
 	 * Strategy interface used to test if properties match.
 	 */
+	@FunctionalInterface
 	public interface DocumentMatcher {
 
 		/**
@@ -386,6 +427,14 @@ public abstract class YamlProcessor {
 		 * Take the first resource in the list that exists and use just that.
 		 */
 		FIRST_FOUND
+	}
+
+	private class SupportedTagInspector implements TagInspector {
+
+		@Override
+		public boolean isGlobalTagAllowed(Tag tag) {
+			return supportedTypes.contains(tag.getClassName());
+		}
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,14 @@
 
 package org.springframework.http;
 
-import java.util.AbstractMap;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.springframework.lang.Nullable;
@@ -29,8 +31,11 @@ import org.springframework.util.MultiValueMap;
 
 /**
  * {@code HttpHeaders} object that can only be read, not written to.
+ * <p>This caches the parsed representations of the "Accept" and "Content-Type" headers
+ * and will get out of sync with the backing map it is mutated at runtime.
  *
  * @author Brian Clozel
+ * @author Sam Brannen
  * @since 5.1.1
  */
 class ReadOnlyHttpHeaders extends HttpHeaders {
@@ -41,15 +46,17 @@ class ReadOnlyHttpHeaders extends HttpHeaders {
 	private MediaType cachedContentType;
 
 	@Nullable
+	@SuppressWarnings("serial")
 	private List<MediaType> cachedAccept;
 
 
-	ReadOnlyHttpHeaders(HttpHeaders headers) {
-		super(headers.headers);
+	ReadOnlyHttpHeaders(MultiValueMap<String, String> headers) {
+		super(headers);
 	}
 
 
 	@Override
+	@Nullable
 	public MediaType getContentType() {
 		if (this.cachedContentType != null) {
 			return this.cachedContentType;
@@ -74,6 +81,12 @@ class ReadOnlyHttpHeaders extends HttpHeaders {
 	}
 
 	@Override
+	public void clearContentHeaders() {
+		// No-op.
+	}
+
+	@Override
+	@Nullable
 	public List<String> get(Object key) {
 		List<String> values = this.headers.get(key);
 		return (values != null ? Collections.unmodifiableList(values) : null);
@@ -110,6 +123,11 @@ class ReadOnlyHttpHeaders extends HttpHeaders {
 	}
 
 	@Override
+	public Map<String, String> asSingleValueMap() {
+		return Collections.unmodifiableMap(this.headers.asSingleValueMap());
+	}
+
+	@Override
 	public Set<String> keySet() {
 		return Collections.unmodifiableSet(this.headers.keySet());
 	}
@@ -141,9 +159,15 @@ class ReadOnlyHttpHeaders extends HttpHeaders {
 
 	@Override
 	public Set<Entry<String, List<String>>> entrySet() {
-		return Collections.unmodifiableSet(this.headers.entrySet().stream()
-				.map(AbstractMap.SimpleImmutableEntry::new)
-				.collect(Collectors.toSet()));
+		return this.headers.entrySet().stream().map(SimpleImmutableEntry::new)
+				.collect(Collectors.collectingAndThen(
+						Collectors.toCollection(LinkedHashSet::new), // Retain original ordering of entries
+						Collections::unmodifiableSet));
+	}
+
+	@Override
+	public void forEach(BiConsumer<? super String, ? super List<String>> action) {
+		this.headers.forEach((k, vs) -> action.accept(k, Collections.unmodifiableList(vs)));
 	}
 
 }

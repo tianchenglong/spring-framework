@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,36 +16,34 @@
 
 package org.springframework.core.io.support;
 
-import org.junit.Test;
-
-import org.springframework.core.io.Resource;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for the {@link ResourceRegion} class.
+ * Tests for {@link ResourceRegion}.
  *
  * @author Brian Clozel
  */
-public class ResourceRegionTests {
+class ResourceRegionTests {
 
 	@Test
-	public void shouldThrowExceptionWithNullResource() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				new ResourceRegion(null, 0, 1));
+	void shouldThrowExceptionWithNullResource() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ResourceRegion(null, 0, 1));
 	}
 
 	@Test
-	public void shouldThrowExceptionForNegativePosition() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				new ResourceRegion(mock(Resource.class), -1, 1));
+	void shouldThrowExceptionForNegativePosition() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ResourceRegion(mock(), -1, 1));
 	}
 
 	@Test
-	public void shouldThrowExceptionForNegativeCount() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				new ResourceRegion(mock(Resource.class), 0, -1));
+	void shouldThrowExceptionForNegativeCount() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ResourceRegion(mock(), 0, -1));
 	}
 
 }

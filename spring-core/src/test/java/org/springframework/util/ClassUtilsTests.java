@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,34 @@ package org.springframework.util;
 
 import java.io.Externalizable;
 import java.io.Serializable;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
-import org.junit.Before;
-import org.junit.Test;
+import a.ClassHavingNestedClass;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.tests.sample.objects.DerivedTestObject;
 import org.springframework.tests.sample.objects.ITestInterface;
@@ -40,32 +55,27 @@ import org.springframework.tests.sample.objects.TestObject;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
+ * Tests for {@link ClassUtils}.
+ *
  * @author Colin Sampaleanu
  * @author Juergen Hoeller
  * @author Rob Harrop
  * @author Rick Evans
+ * @author Sam Brannen
  */
-public class ClassUtilsTests {
+class ClassUtilsTests {
 
-	private ClassLoader classLoader = getClass().getClassLoader();
-
-
-	@Before
-	public void clearStatics() {
-		InnerClass.noArgCalled = false;
-		InnerClass.argCalled = false;
-		InnerClass.overloadedCalled = false;
-	}
+	private final ClassLoader classLoader = getClass().getClassLoader();
 
 
 	@Test
-	public void testIsPresent() {
+	void isPresent() {
 		assertThat(ClassUtils.isPresent("java.lang.String", classLoader)).isTrue();
 		assertThat(ClassUtils.isPresent("java.lang.MySpecialString", classLoader)).isFalse();
 	}
 
 	@Test
-	public void testForName() throws ClassNotFoundException {
+	void forName() throws ClassNotFoundException {
 		assertThat(ClassUtils.forName("java.lang.String", classLoader)).isEqualTo(String.class);
 		assertThat(ClassUtils.forName("java.lang.String[]", classLoader)).isEqualTo(String[].class);
 		assertThat(ClassUtils.forName(String[].class.getName(), classLoader)).isEqualTo(String[].class);
@@ -80,7 +90,18 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testForNameWithPrimitiveClasses() throws ClassNotFoundException {
+	void forNameWithNestedType() throws ClassNotFoundException {
+		assertThat(ClassUtils.forName("org.springframework.util.ClassUtilsTests$NestedClass", classLoader)).isEqualTo(NestedClass.class);
+		assertThat(ClassUtils.forName("org.springframework.util.ClassUtilsTests.NestedClass", classLoader)).isEqualTo(NestedClass.class);
+
+		// Precondition: package name must have length == 1.
+		assertThat(ClassHavingNestedClass.class.getPackageName().length()).isEqualTo(1);
+		assertThat(ClassUtils.forName("a.ClassHavingNestedClass$NestedClass", classLoader)).isEqualTo(ClassHavingNestedClass.NestedClass.class);
+		assertThat(ClassUtils.forName("a.ClassHavingNestedClass.NestedClass", classLoader)).isEqualTo(ClassHavingNestedClass.NestedClass.class);
+	}
+
+	@Test
+	void forNameWithPrimitiveClasses() throws ClassNotFoundException {
 		assertThat(ClassUtils.forName("boolean", classLoader)).isEqualTo(boolean.class);
 		assertThat(ClassUtils.forName("byte", classLoader)).isEqualTo(byte.class);
 		assertThat(ClassUtils.forName("char", classLoader)).isEqualTo(char.class);
@@ -93,7 +114,7 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testForNameWithPrimitiveArrays() throws ClassNotFoundException {
+	void forNameWithPrimitiveArrays() throws ClassNotFoundException {
 		assertThat(ClassUtils.forName("boolean[]", classLoader)).isEqualTo(boolean[].class);
 		assertThat(ClassUtils.forName("byte[]", classLoader)).isEqualTo(byte[].class);
 		assertThat(ClassUtils.forName("char[]", classLoader)).isEqualTo(char[].class);
@@ -105,7 +126,7 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testForNameWithPrimitiveArraysInternalName() throws ClassNotFoundException {
+	void forNameWithPrimitiveArraysInternalName() throws ClassNotFoundException {
 		assertThat(ClassUtils.forName(boolean[].class.getName(), classLoader)).isEqualTo(boolean[].class);
 		assertThat(ClassUtils.forName(byte[].class.getName(), classLoader)).isEqualTo(byte[].class);
 		assertThat(ClassUtils.forName(char[].class.getName(), classLoader)).isEqualTo(char[].class);
@@ -117,7 +138,7 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testIsCacheSafe() {
+	void isCacheSafe() {
 		ClassLoader childLoader1 = new ClassLoader(classLoader) {};
 		ClassLoader childLoader2 = new ClassLoader(classLoader) {};
 		ClassLoader childLoader3 = new ClassLoader(classLoader) {
@@ -134,11 +155,11 @@ public class ClassUtilsTests {
 		assertThat(ClassUtils.isCacheSafe(String.class, childLoader1)).isTrue();
 		assertThat(ClassUtils.isCacheSafe(String.class, childLoader2)).isTrue();
 		assertThat(ClassUtils.isCacheSafe(String.class, childLoader3)).isTrue();
-		assertThat(ClassUtils.isCacheSafe(InnerClass.class, null)).isFalse();
-		assertThat(ClassUtils.isCacheSafe(InnerClass.class, classLoader)).isTrue();
-		assertThat(ClassUtils.isCacheSafe(InnerClass.class, childLoader1)).isTrue();
-		assertThat(ClassUtils.isCacheSafe(InnerClass.class, childLoader2)).isTrue();
-		assertThat(ClassUtils.isCacheSafe(InnerClass.class, childLoader3)).isTrue();
+		assertThat(ClassUtils.isCacheSafe(NestedClass.class, null)).isFalse();
+		assertThat(ClassUtils.isCacheSafe(NestedClass.class, classLoader)).isTrue();
+		assertThat(ClassUtils.isCacheSafe(NestedClass.class, childLoader1)).isTrue();
+		assertThat(ClassUtils.isCacheSafe(NestedClass.class, childLoader2)).isTrue();
+		assertThat(ClassUtils.isCacheSafe(NestedClass.class, childLoader3)).isTrue();
 		assertThat(ClassUtils.isCacheSafe(composite, null)).isFalse();
 		assertThat(ClassUtils.isCacheSafe(composite, classLoader)).isFalse();
 		assertThat(ClassUtils.isCacheSafe(composite, childLoader1)).isTrue();
@@ -146,92 +167,115 @@ public class ClassUtilsTests {
 		assertThat(ClassUtils.isCacheSafe(composite, childLoader3)).isTrue();
 	}
 
+	@ParameterizedTest(name = "''{0}'' -> {1}")
+	@CsvSource(textBlock = """
+		boolean, boolean
+		byte, byte
+		char, char
+		short, short
+		int, int
+		long, long
+		float, float
+		double, double
+		[Z, boolean[]
+		[B, byte[]
+		[C, char[]
+		[S, short[]
+		[I, int[]
+		[J, long[]
+		[F, float[]
+		[D, double[]
+		""")
+	void resolvePrimitiveClassName(String input, Class<?> output) {
+		assertThat(ClassUtils.resolvePrimitiveClassName(input)).isEqualTo(output);
+	}
+
 	@Test
-	public void testGetShortName() {
+	void getShortName() {
 		String className = ClassUtils.getShortName(getClass());
 		assertThat(className).as("Class name did not match").isEqualTo("ClassUtilsTests");
 	}
 
 	@Test
-	public void testGetShortNameForObjectArrayClass() {
+	void getShortNameForObjectArrayClass() {
 		String className = ClassUtils.getShortName(Object[].class);
 		assertThat(className).as("Class name did not match").isEqualTo("Object[]");
 	}
 
 	@Test
-	public void testGetShortNameForMultiDimensionalObjectArrayClass() {
+	void getShortNameForMultiDimensionalObjectArrayClass() {
 		String className = ClassUtils.getShortName(Object[][].class);
 		assertThat(className).as("Class name did not match").isEqualTo("Object[][]");
 	}
 
 	@Test
-	public void testGetShortNameForPrimitiveArrayClass() {
+	void getShortNameForPrimitiveArrayClass() {
 		String className = ClassUtils.getShortName(byte[].class);
 		assertThat(className).as("Class name did not match").isEqualTo("byte[]");
 	}
 
 	@Test
-	public void testGetShortNameForMultiDimensionalPrimitiveArrayClass() {
+	void getShortNameForMultiDimensionalPrimitiveArrayClass() {
 		String className = ClassUtils.getShortName(byte[][][].class);
 		assertThat(className).as("Class name did not match").isEqualTo("byte[][][]");
 	}
 
 	@Test
-	public void testGetShortNameForInnerClass() {
-		String className = ClassUtils.getShortName(InnerClass.class);
-		assertThat(className).as("Class name did not match").isEqualTo("ClassUtilsTests.InnerClass");
+	void getShortNameForNestedClass() {
+		String className = ClassUtils.getShortName(NestedClass.class);
+		assertThat(className).as("Class name did not match").isEqualTo("ClassUtilsTests.NestedClass");
 	}
 
 	@Test
-	public void testGetShortNameAsProperty() {
+	void getShortNameAsProperty() {
 		String shortName = ClassUtils.getShortNameAsProperty(this.getClass());
 		assertThat(shortName).as("Class name did not match").isEqualTo("classUtilsTests");
 	}
 
 	@Test
-	public void testGetClassFileName() {
+	void getClassFileName() {
 		assertThat(ClassUtils.getClassFileName(String.class)).isEqualTo("String.class");
 		assertThat(ClassUtils.getClassFileName(getClass())).isEqualTo("ClassUtilsTests.class");
 	}
 
 	@Test
-	public void testGetPackageName() {
+	void getPackageName() {
 		assertThat(ClassUtils.getPackageName(String.class)).isEqualTo("java.lang");
 		assertThat(ClassUtils.getPackageName(getClass())).isEqualTo(getClass().getPackage().getName());
 	}
 
 	@Test
-	public void testGetQualifiedName() {
+	void getQualifiedName() {
 		String className = ClassUtils.getQualifiedName(getClass());
 		assertThat(className).as("Class name did not match").isEqualTo("org.springframework.util.ClassUtilsTests");
 	}
 
 	@Test
-	public void testGetQualifiedNameForObjectArrayClass() {
+	void getQualifiedNameForObjectArrayClass() {
 		String className = ClassUtils.getQualifiedName(Object[].class);
 		assertThat(className).as("Class name did not match").isEqualTo("java.lang.Object[]");
 	}
 
 	@Test
-	public void testGetQualifiedNameForMultiDimensionalObjectArrayClass() {
+	void getQualifiedNameForMultiDimensionalObjectArrayClass() {
 		String className = ClassUtils.getQualifiedName(Object[][].class);
 		assertThat(className).as("Class name did not match").isEqualTo("java.lang.Object[][]");
 	}
 
 	@Test
-	public void testGetQualifiedNameForPrimitiveArrayClass() {
+	void getQualifiedNameForPrimitiveArrayClass() {
 		String className = ClassUtils.getQualifiedName(byte[].class);
 		assertThat(className).as("Class name did not match").isEqualTo("byte[]");
 	}
 
 	@Test
-	public void testGetQualifiedNameForMultiDimensionalPrimitiveArrayClass() {
+	void getQualifiedNameForMultiDimensionalPrimitiveArrayClass() {
 		String className = ClassUtils.getQualifiedName(byte[][].class);
 		assertThat(className).as("Class name did not match").isEqualTo("byte[][]");
 	}
 
 	@Test
-	public void testHasMethod() {
+	void hasMethod() {
 		assertThat(ClassUtils.hasMethod(Collection.class, "size")).isTrue();
 		assertThat(ClassUtils.hasMethod(Collection.class, "remove", Object.class)).isTrue();
 		assertThat(ClassUtils.hasMethod(Collection.class, "remove")).isFalse();
@@ -239,7 +283,7 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testGetMethodIfAvailable() {
+	void getMethodIfAvailable() {
 		Method method = ClassUtils.getMethodIfAvailable(Collection.class, "size");
 		assertThat(method).isNotNull();
 		assertThat(method.getName()).isEqualTo("size");
@@ -253,13 +297,13 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testGetMethodCountForName() {
+	void getMethodCountForName() {
 		assertThat(ClassUtils.getMethodCountForName(OverloadedMethodsClass.class, "print")).as("Verifying number of overloaded 'print' methods for OverloadedMethodsClass.").isEqualTo(2);
 		assertThat(ClassUtils.getMethodCountForName(SubOverloadedMethodsClass.class, "print")).as("Verifying number of overloaded 'print' methods for SubOverloadedMethodsClass.").isEqualTo(4);
 	}
 
 	@Test
-	public void testCountOverloadedMethods() {
+	void countOverloadedMethods() {
 		assertThat(ClassUtils.hasAtLeastOneMethodWithName(TestObject.class, "foobar")).isFalse();
 		// no args
 		assertThat(ClassUtils.hasAtLeastOneMethodWithName(TestObject.class, "hashCode")).isTrue();
@@ -268,28 +312,7 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testNoArgsStaticMethod() throws IllegalAccessException, InvocationTargetException {
-		Method method = ClassUtils.getStaticMethod(InnerClass.class, "staticMethod");
-		method.invoke(null, (Object[]) null);
-		assertThat(InnerClass.noArgCalled).as("no argument method was not invoked.").isTrue();
-	}
-
-	@Test
-	public void testArgsStaticMethod() throws IllegalAccessException, InvocationTargetException {
-		Method method = ClassUtils.getStaticMethod(InnerClass.class, "argStaticMethod", String.class);
-		method.invoke(null, "test");
-		assertThat(InnerClass.argCalled).as("argument method was not invoked.").isTrue();
-	}
-
-	@Test
-	public void testOverloadedStaticMethod() throws IllegalAccessException, InvocationTargetException {
-		Method method = ClassUtils.getStaticMethod(InnerClass.class, "staticMethod", String.class);
-		method.invoke(null, "test");
-		assertThat(InnerClass.overloadedCalled).as("argument method was not invoked.").isTrue();
-	}
-
-	@Test
-	public void testIsAssignable() {
+	void isAssignable() {
 		assertThat(ClassUtils.isAssignable(Object.class, Object.class)).isTrue();
 		assertThat(ClassUtils.isAssignable(String.class, String.class)).isTrue();
 		assertThat(ClassUtils.isAssignable(Object.class, String.class)).isTrue();
@@ -305,13 +328,13 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testClassPackageAsResourcePath() {
+	void classPackageAsResourcePath() {
 		String result = ClassUtils.classPackageAsResourcePath(Proxy.class);
 		assertThat(result).isEqualTo("java/lang/reflect");
 	}
 
 	@Test
-	public void testAddResourcePathToPackagePath() {
+	void addResourcePathToPackagePath() {
 		String result = "java/lang/reflect/xyzabc.xml";
 		assertThat(ClassUtils.addResourcePathToPackagePath(Proxy.class, "xyzabc.xml")).isEqualTo(result);
 		assertThat(ClassUtils.addResourcePathToPackagePath(Proxy.class, "/xyzabc.xml")).isEqualTo(result);
@@ -320,28 +343,28 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testGetAllInterfaces() {
+	void getAllInterfaces() {
 		DerivedTestObject testBean = new DerivedTestObject();
 		List<Class<?>> ifcs = Arrays.asList(ClassUtils.getAllInterfaces(testBean));
-		assertThat(ifcs.size()).as("Correct number of interfaces").isEqualTo(4);
+		assertThat(ifcs).as("Correct number of interfaces").hasSize(4);
 		assertThat(ifcs.contains(Serializable.class)).as("Contains Serializable").isTrue();
 		assertThat(ifcs.contains(ITestObject.class)).as("Contains ITestBean").isTrue();
 		assertThat(ifcs.contains(ITestInterface.class)).as("Contains IOther").isTrue();
 	}
 
 	@Test
-	public void testClassNamesToString() {
-		List<Class<?>> ifcs = new LinkedList<>();
+	void classNamesToString() {
+		List<Class<?>> ifcs = new ArrayList<>();
 		ifcs.add(Serializable.class);
 		ifcs.add(Runnable.class);
 		assertThat(ifcs.toString()).isEqualTo("[interface java.io.Serializable, interface java.lang.Runnable]");
 		assertThat(ClassUtils.classNamesToString(ifcs)).isEqualTo("[java.io.Serializable, java.lang.Runnable]");
 
-		List<Class<?>> classes = new LinkedList<>();
-		classes.add(LinkedList.class);
+		List<Class<?>> classes = new ArrayList<>();
+		classes.add(ArrayList.class);
 		classes.add(Integer.class);
-		assertThat(classes.toString()).isEqualTo("[class java.util.LinkedList, class java.lang.Integer]");
-		assertThat(ClassUtils.classNamesToString(classes)).isEqualTo("[java.util.LinkedList, java.lang.Integer]");
+		assertThat(classes.toString()).isEqualTo("[class java.util.ArrayList, class java.lang.Integer]");
+		assertThat(ClassUtils.classNamesToString(classes)).isEqualTo("[java.util.ArrayList, java.lang.Integer]");
 
 		assertThat(Collections.singletonList(List.class).toString()).isEqualTo("[interface java.util.List]");
 		assertThat(ClassUtils.classNamesToString(List.class)).isEqualTo("[java.util.List]");
@@ -351,7 +374,7 @@ public class ClassUtilsTests {
 	}
 
 	@Test
-	public void testDetermineCommonAncestor() {
+	void determineCommonAncestor() {
 		assertThat(ClassUtils.determineCommonAncestor(Integer.class, Number.class)).isEqualTo(Number.class);
 		assertThat(ClassUtils.determineCommonAncestor(Number.class, Integer.class)).isEqualTo(Number.class);
 		assertThat(ClassUtils.determineCommonAncestor(Number.class, null)).isEqualTo(Number.class);
@@ -380,8 +403,399 @@ public class ClassUtilsTests {
 		assertThat(ClassUtils.determineCommonAncestor(String.class, List.class)).isNull();
 	}
 
+	@Test
+	void getMostSpecificMethod() throws NoSuchMethodException {
+		Method defaultPrintMethod = ClassUtils.getMethod(MethodsInterface.class, "defaultPrint");
+		assertThat(ClassUtils.getMostSpecificMethod(defaultPrintMethod, MethodsInterfaceImplementation.class))
+				.isEqualTo(defaultPrintMethod);
+		assertThat(ClassUtils.getMostSpecificMethod(defaultPrintMethod, SubMethodsInterfaceImplementation.class))
+				.isEqualTo(defaultPrintMethod);
 
-	public static class InnerClass {
+		Method printMethod = ClassUtils.getMethod(MethodsInterface.class, "print", String.class);
+		assertThat(ClassUtils.getMostSpecificMethod(printMethod, MethodsInterfaceImplementation.class))
+				.isNotEqualTo(printMethod);
+		assertThat(ClassUtils.getMostSpecificMethod(printMethod, MethodsInterfaceImplementation.class))
+				.isEqualTo(ClassUtils.getMethod(MethodsInterfaceImplementation.class, "print", String.class));
+		assertThat(ClassUtils.getMostSpecificMethod(printMethod, SubMethodsInterfaceImplementation.class))
+				.isEqualTo(ClassUtils.getMethod(MethodsInterfaceImplementation.class, "print", String.class));
+
+		Method protectedPrintMethod = MethodsInterfaceImplementation.class.getDeclaredMethod("protectedPrint");
+		assertThat(ClassUtils.getMostSpecificMethod(protectedPrintMethod, MethodsInterfaceImplementation.class))
+				.isEqualTo(protectedPrintMethod);
+		assertThat(ClassUtils.getMostSpecificMethod(protectedPrintMethod, SubMethodsInterfaceImplementation.class))
+				.isEqualTo(SubMethodsInterfaceImplementation.class.getDeclaredMethod("protectedPrint"));
+
+		Method packageAccessiblePrintMethod = MethodsInterfaceImplementation.class.getDeclaredMethod("packageAccessiblePrint");
+		assertThat(ClassUtils.getMostSpecificMethod(packageAccessiblePrintMethod, MethodsInterfaceImplementation.class))
+				.isEqualTo(packageAccessiblePrintMethod);
+		assertThat(ClassUtils.getMostSpecificMethod(packageAccessiblePrintMethod, SubMethodsInterfaceImplementation.class))
+				.isEqualTo(ClassUtils.getMethod(SubMethodsInterfaceImplementation.class, "packageAccessiblePrint"));
+	}
+
+	@ParameterizedTest
+	@WrapperTypes
+	void isPrimitiveWrapper(Class<?> type) {
+		assertThat(ClassUtils.isPrimitiveWrapper(type)).isTrue();
+	}
+
+	@ParameterizedTest
+	@PrimitiveTypes
+	void isPrimitiveOrWrapperWithPrimitive(Class<?> type) {
+		assertThat(ClassUtils.isPrimitiveOrWrapper(type)).isTrue();
+	}
+
+	@ParameterizedTest
+	@WrapperTypes
+	void isPrimitiveOrWrapperWithWrapper(Class<?> type) {
+		assertThat(ClassUtils.isPrimitiveOrWrapper(type)).isTrue();
+	}
+
+	@Test
+	void isLambda() {
+		assertIsLambda(ClassUtilsTests.staticLambdaExpression);
+		assertIsLambda(ClassUtilsTests::staticStringFactory);
+
+		assertIsLambda(this.instanceLambdaExpression);
+		assertIsLambda(this::instanceStringFactory);
+	}
+
+	@Test
+	@SuppressWarnings("Convert2Lambda")
+	void isNotLambda() {
+		assertIsNotLambda(new EnigmaSupplier());
+
+		assertIsNotLambda(new Supplier<>() {
+			@Override
+			public String get() {
+				return "anonymous inner class";
+			}
+		});
+
+		assertIsNotLambda(new Fake$$LambdaSupplier());
+	}
+
+
+	@Nested
+	class GetStaticMethodTests {
+
+		@BeforeEach
+		void clearStatics() {
+			NestedClass.noArgCalled = false;
+			NestedClass.argCalled = false;
+			NestedClass.overloadedCalled = false;
+		}
+
+		@Test
+		void noArgsStaticMethod() throws IllegalAccessException, InvocationTargetException {
+			Method method = ClassUtils.getStaticMethod(NestedClass.class, "staticMethod");
+			method.invoke(null, (Object[]) null);
+			assertThat(NestedClass.noArgCalled).as("no argument method was not invoked.").isTrue();
+		}
+
+		@Test
+		void argsStaticMethod() throws IllegalAccessException, InvocationTargetException {
+			Method method = ClassUtils.getStaticMethod(NestedClass.class, "argStaticMethod", String.class);
+			method.invoke(null, "test");
+			assertThat(NestedClass.argCalled).as("argument method was not invoked.").isTrue();
+		}
+
+		@Test
+		void overloadedStaticMethod() throws IllegalAccessException, InvocationTargetException {
+			Method method = ClassUtils.getStaticMethod(NestedClass.class, "staticMethod", String.class);
+			method.invoke(null, "test");
+			assertThat(NestedClass.overloadedCalled).as("argument method was not invoked.").isTrue();
+		}
+
+	}
+
+
+	@Nested  // gh-33216
+	class GetPubliclyAccessibleMethodTests {
+
+		@Test
+		void nonPublicMethod(TestInfo testInfo) {
+			Method originalMethod = testInfo.getTestMethod().get();
+
+			// Prerequisites for this use case:
+			assertNotPublic(originalMethod);
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod).isSameAs(originalMethod);
+			assertNotPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		// This method is intentionally public.
+		public void publicMethodInNonPublicType(TestInfo testInfo) {
+			Method originalMethod = testInfo.getTestMethod().get();
+
+			// Prerequisites for this use case:
+			assertPublic(originalMethod);
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod).isSameAs(originalMethod);
+			assertNotPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void publicMethodInPublicType() throws Exception {
+			Class<?> originalType = String.class;
+			Method originalMethod = originalType.getDeclaredMethod("toString");
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(originalType);
+			assertThat(publiclyAccessibleMethod).isSameAs(originalMethod);
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void publicInterfaceMethodInPublicType() throws Exception {
+			Class<?> originalType = ArrayList.class;
+			Method originalMethod = originalType.getDeclaredMethod("size");
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			// Should not find the interface method in List.
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(originalType);
+			assertThat(publiclyAccessibleMethod).isSameAs(originalMethod);
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void publicMethodInJavaLangObjectDeclaredInNonPublicType() throws Exception {
+			List<String> unmodifiableList = Collections.unmodifiableList(Arrays.asList("foo", "bar"));
+			Class<?> targetClass = unmodifiableList.getClass();
+
+			// Prerequisites for this use case:
+			assertNotPublic(targetClass);
+
+			Method originalMethod = targetClass.getMethod("toString");
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(Object.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("toString");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).isEmpty();
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void publicMethodInJavaTimeZoneIdDeclaredInNonPublicSubclass() throws Exception {
+			// Returns a package-private java.time.ZoneRegion.
+			ZoneId zoneId = ZoneId.of("CET");
+			Class<?> targetClass = zoneId.getClass();
+
+			// Prerequisites for this use case:
+			assertNotPublic(targetClass);
+
+			Method originalMethod = targetClass.getDeclaredMethod("getId");
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(ZoneId.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("getId");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).isEmpty();
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void publicInterfaceMethodDeclaredInNonPublicTypeWithLateBindingOfClassMethodToSubclassDeclaredInterface() throws Exception {
+			HashMap<String, String> hashMap = new HashMap<>();
+			// Returns a package-private java.util.HashMap.KeyIterator which extends java.util.HashMap.HashIterator
+			// which declares hasNext(), even though HashIterator does not implement Iterator. Rather, KeyIterator
+			// implements HashIterator.
+			Iterator<String> iterator = hashMap.keySet().iterator();
+			Class<?> targetClass = iterator.getClass();
+
+			// Prerequisites for this use case:
+			assertNotPublic(targetClass);
+
+			Method originalMethod = targetClass.getMethod("hasNext");
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, targetClass);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(Iterator.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("hasNext");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).isEmpty();
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void privateSubclassOverridesPropertyInPublicInterface() throws Exception {
+			Method originalMethod = PrivateSubclass.class.getDeclaredMethod("getText");
+
+			// Prerequisite: type must not be public for this use case.
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(PublicInterface.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("getText");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).isEmpty();
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void privateSubclassOverridesPropertyInPrivateInterface() throws Exception {
+			Method originalMethod = PrivateSubclass.class.getDeclaredMethod("getMessage");
+
+			// Prerequisite: type must not be public for this use case.
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			// Should not find the interface method in PrivateInterface.
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(PublicSuperclass.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("getMessage");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).isEmpty();
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void privateSubclassOverridesPropertyInPublicSuperclass() throws Exception {
+			Method originalMethod = PrivateSubclass.class.getDeclaredMethod("getNumber");
+
+			// Prerequisite: type must not be public for this use case.
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(PublicSuperclass.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("getNumber");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).isEmpty();
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void packagePrivateSubclassOverridesMethodInPublicInterface() throws Exception {
+			List<String> unmodifiableList = Collections.unmodifiableList(Arrays.asList("foo", "bar"));
+			Class<?> targetClass = unmodifiableList.getClass();
+
+			// Prerequisites for this use case:
+			assertNotPublic(targetClass);
+
+			Method originalMethod = targetClass.getMethod("contains", Object.class);
+
+			// Prerequisite: type must not be public for this use case.
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(Collection.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("contains");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).containsExactly(Object.class);
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void privateSubclassOverridesMethodInPrivateInterface() throws Exception {
+			Method originalMethod = PrivateSubclass.class.getMethod("greet", String.class);
+
+			// Prerequisite: type must not be public for this use case.
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(PublicSuperclass.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("greet");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).containsExactly(String.class);
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		@Test
+		void privateSubclassOverridesMethodInPublicSuperclass() throws Exception {
+			Method originalMethod = PrivateSubclass.class.getMethod("process", int.class);
+
+			// Prerequisite: type must not be public for this use case.
+			assertNotPublic(originalMethod.getDeclaringClass());
+
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(originalMethod, null);
+			assertThat(publiclyAccessibleMethod.getDeclaringClass()).isEqualTo(PublicSuperclass.class);
+			assertThat(publiclyAccessibleMethod.getName()).isEqualTo("process");
+			assertThat(publiclyAccessibleMethod.getParameterTypes()).containsExactly(int.class);
+			assertPubliclyAccessible(publiclyAccessibleMethod);
+		}
+
+		private static void assertPubliclyAccessible(Method method) {
+			assertPublic(method);
+			assertPublic(method.getDeclaringClass());
+		}
+
+		private static void assertNotPubliclyAccessible(Method method) {
+			assertThat(!isPublic(method) || !isPublic(method.getDeclaringClass()))
+					.as("%s must not be publicly accessible", method)
+					.isTrue();
+		}
+
+		private static void assertPublic(Member member) {
+			assertThat(isPublic(member)).as("%s must be public", member).isTrue();
+		}
+
+		private static void assertPublic(Class<?> clazz) {
+			assertThat(isPublic(clazz)).as("%s must be public", clazz).isTrue();
+		}
+
+		private static void assertNotPublic(Member member) {
+			assertThat(!isPublic(member)).as("%s must be not be public", member).isTrue();
+		}
+
+		private static void assertNotPublic(Class<?> clazz) {
+			assertThat(!isPublic(clazz)).as("%s must be not be public", clazz).isTrue();
+		}
+
+		private static boolean isPublic(Class<?> clazz) {
+			return Modifier.isPublic(clazz.getModifiers());
+		}
+
+		private static boolean isPublic(Member member) {
+			return Modifier.isPublic(member.getModifiers());
+		}
+
+		private interface PrivateInterface {
+
+			String getMessage();
+
+			String greet(String name);
+		}
+
+		private static class PrivateSubclass extends PublicSuperclass implements PublicInterface, PrivateInterface {
+
+			@Override
+			public int getNumber() {
+				return 2;
+			}
+
+			@Override
+			public String getMessage() {
+				return "hello";
+			}
+
+			@Override
+			public String greet(String name) {
+				return "Hello, " + name;
+			}
+
+			@Override
+			public int process(int num) {
+				return num * 2;
+			}
+
+			@Override
+			public String getText() {
+				return "enigma";
+			}
+		}
+
+	}
+
+
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	@ValueSource(classes = { Boolean.class, Character.class, Byte.class, Short.class,
+		Integer.class, Long.class, Float.class, Double.class, Void.class })
+	@interface WrapperTypes {
+	}
+
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	@ValueSource(classes = { boolean.class, char.class, byte.class, short.class,
+		int.class, long.class, float.class, double.class, void.class })
+	@interface PrimitiveTypes {
+	}
+
+	public static class NestedClass {
 
 		static boolean noArgCalled;
 		static boolean argCalled;
@@ -422,6 +836,82 @@ public class ClassUtilsTests {
 		void print(String header, String[] messages, String footer) {
 			/* no-op */
 		}
+	}
+
+	private static void assertIsLambda(Supplier<String> supplier) {
+		assertThat(ClassUtils.isLambdaClass(supplier.getClass())).isTrue();
+	}
+
+	private static void assertIsNotLambda(Supplier<String> supplier) {
+		assertThat(ClassUtils.isLambdaClass(supplier.getClass())).isFalse();
+	}
+
+	private static final Supplier<String> staticLambdaExpression = () -> "static lambda expression";
+
+	private final Supplier<String> instanceLambdaExpression = () -> "instance lambda expressions";
+
+	private static String staticStringFactory() {
+		return "static string factory";
+	}
+
+	private String instanceStringFactory() {
+		return "instance string factory";
+	}
+
+	private static class EnigmaSupplier implements Supplier<String> {
+		@Override
+		public String get() {
+			return "enigma";
+		}
+	}
+
+	private static class Fake$$LambdaSupplier implements Supplier<String> {
+		@Override
+		public String get() {
+			return "fake lambda";
+		}
+	}
+
+	@SuppressWarnings("unused")
+	private interface MethodsInterface {
+
+		default void defaultPrint() {
+
+		}
+
+		void print(String messages);
+	}
+
+	@SuppressWarnings("unused")
+	private class MethodsInterfaceImplementation implements MethodsInterface {
+
+		@Override
+		public void print(String message) {
+
+		}
+
+		protected void protectedPrint() {
+
+		}
+
+		void packageAccessiblePrint() {
+
+		}
+	}
+
+	@SuppressWarnings("unused")
+	private class SubMethodsInterfaceImplementation extends MethodsInterfaceImplementation {
+
+		@Override
+		protected void protectedPrint() {
+
+		}
+
+		@Override
+		public void packageAccessiblePrint() {
+
+		}
+
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.jmx.access;
 
 import java.net.BindException;
 import java.net.MalformedURLException;
+
 import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
@@ -25,25 +26,22 @@ import javax.management.remote.JMXConnectorServer;
 import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
 
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 
-import org.springframework.util.SocketUtils;
+import org.springframework.core.testfixture.net.TestSocketUtils;
 
 /**
  * @author Rob Harrop
  * @author Chris Beams
  * @author Sam Brannen
  */
-public class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTests {
+class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTests {
 
-	private static final int SERVICE_PORT;
+	@SuppressWarnings("deprecation")
+	private final int servicePort = TestSocketUtils.findAvailableTcpPort();
 
-	private static final String SERVICE_URL;
-
-	static {
-		SERVICE_PORT = SocketUtils.findAvailableTcpPort();
-		SERVICE_URL = "service:jmx:jmxmp://localhost:" + SERVICE_PORT;
-	}
+	private final String serviceUrl = "service:jmx:jmxmp://localhost:" + servicePort;
 
 
 	private JMXConnectorServer connectorServer;
@@ -59,14 +57,14 @@ public class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTes
 			this.connectorServer.start();
 		}
 		catch (BindException ex) {
-			System.out.println("Skipping remote JMX tests because binding to local port ["
-					+ SERVICE_PORT + "] failed: " + ex.getMessage());
 			runTests = false;
+			Assumptions.abort("Skipping remote JMX tests because binding to local port [" +
+					this.servicePort + "] failed: " + ex.getMessage());
 		}
 	}
 
 	private JMXServiceURL getServiceUrl() throws MalformedURLException {
-		return new JMXServiceURL(SERVICE_URL);
+		return new JMXServiceURL(this.serviceUrl);
 	}
 
 	@Override
@@ -75,9 +73,9 @@ public class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTes
 		return this.connector.getMBeanServerConnection();
 	}
 
-	@After
+	@AfterEach
 	@Override
-	public void tearDown() throws Exception {
+	protected void tearDown() throws Exception {
 		if (this.connector != null) {
 			this.connector.close();
 		}

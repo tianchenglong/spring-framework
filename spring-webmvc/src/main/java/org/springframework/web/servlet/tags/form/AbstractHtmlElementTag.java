@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ package org.springframework.web.servlet.tags.form;
 
 import java.util.HashMap;
 import java.util.Map;
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.tagext.DynamicAttributes;
+
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.tagext.DynamicAttributes;
 
 import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
@@ -32,7 +33,7 @@ import org.springframework.util.StringUtils;
  * across elements.
  *
  * <p>Additionally, this base class allows for rendering non-standard attributes
- * as part of the tag's output.  These attributes are accessible to subclasses if
+ * as part of the tag's output. These attributes are accessible to subclasses if
  * needed via the {@link AbstractHtmlElementTag#getDynamicAttributes() dynamicAttributes}
  * map.
  *
@@ -428,9 +429,6 @@ public abstract class AbstractHtmlElementTag extends AbstractDataBoundFormElemen
 		return this.dynamicAttributes;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	@Override
 	public void setDynamicAttribute(String uri, String localName, Object value) throws JspException {
 		if (this.dynamicAttributes == null) {

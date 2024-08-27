@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,40 +19,41 @@ package org.springframework.web.servlet.view;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
-import org.junit.Before;
-import org.junit.Test;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.BeanIsAbstractException;
 import org.springframework.core.io.Resource;
-import org.springframework.mock.web.test.MockServletContext;
 import org.springframework.web.context.support.ServletContextResource;
 import org.springframework.web.context.support.StaticWebApplicationContext;
 import org.springframework.web.servlet.View;
+import org.springframework.web.testfixture.servlet.MockServletContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * @author Rod Johnson
  * @author Juergen Hoeller
  * @author Sam Brannen
  */
+@SuppressWarnings("deprecation")
 public class ResourceBundleViewResolverTests {
 
 	/** Comes from this package */
-	private static String PROPS_FILE = "org.springframework.web.servlet.view.testviews";
+	private static final String PROPS_FILE = "org.springframework.web.servlet.view.testviews";
 
 	private final ResourceBundleViewResolver rb = new ResourceBundleViewResolver();
 
 	private final StaticWebApplicationContext wac = new StaticWebApplicationContext();
 
 
-	@Before
-	public void setUp() throws Exception {
+	@BeforeEach
+	void setUp() {
 		rb.setBasename(PROPS_FILE);
 		rb.setCache(getCache());
 		rb.setDefaultParentView("testParent");
@@ -74,7 +75,7 @@ public class ResourceBundleViewResolverTests {
 
 
 	@Test
-	public void parentsAreAbstract() throws Exception {
+	void parentsAreAbstract() {
 		assertThatExceptionOfType(BeanIsAbstractException.class).isThrownBy(() ->
 				rb.resolveViewName("debug.Parent", Locale.ENGLISH));
 		assertThatExceptionOfType(BeanIsAbstractException.class).isThrownBy(() ->
@@ -82,7 +83,7 @@ public class ResourceBundleViewResolverTests {
 	}
 
 	@Test
-	public void debugViewEnglish() throws Exception {
+	void debugViewEnglish() throws Exception {
 		View v = rb.resolveViewName("debugView", Locale.ENGLISH);
 		assertThat(v).isInstanceOf(InternalResourceView.class);
 		InternalResourceView jv = (InternalResourceView) v;
@@ -97,7 +98,7 @@ public class ResourceBundleViewResolverTests {
 	}
 
 	@Test
-	public void debugViewFrench() throws Exception {
+	void debugViewFrench() throws Exception {
 		View v = rb.resolveViewName("debugView", Locale.FRENCH);
 		assertThat(v).isInstanceOf(InternalResourceView.class);
 		InternalResourceView jv = (InternalResourceView) v;
@@ -106,12 +107,12 @@ public class ResourceBundleViewResolverTests {
 	}
 
 	@Test
-	public void eagerInitialization() throws Exception {
+	void eagerInitialization() throws Exception {
 		ResourceBundleViewResolver rb = new ResourceBundleViewResolver();
 		rb.setBasename(PROPS_FILE);
 		rb.setCache(getCache());
 		rb.setDefaultParentView("testParent");
-		rb.setLocalesToInitialize(new Locale[] {Locale.ENGLISH, Locale.FRENCH});
+		rb.setLocalesToInitialize(Locale.ENGLISH, Locale.FRENCH);
 		rb.setApplicationContext(wac);
 
 		View v = rb.resolveViewName("debugView", Locale.FRENCH);
@@ -122,7 +123,7 @@ public class ResourceBundleViewResolverTests {
 	}
 
 	@Test
-	public void sameBundleOnlyCachedOnce() throws Exception {
+	void sameBundleOnlyCachedOnce() throws Exception {
 		assumeTrue(rb.isCache());
 
 		View v1 = rb.resolveViewName("debugView", Locale.ENGLISH);
@@ -131,12 +132,12 @@ public class ResourceBundleViewResolverTests {
 	}
 
 	@Test
-	public void noSuchViewEnglish() throws Exception {
-		assertThat((Object) rb.resolveViewName("xxxxxxweorqiwuopeir", Locale.ENGLISH)).isNull();
+	void noSuchViewEnglish() throws Exception {
+		assertThat(rb.resolveViewName("xxxxxxweorqiwuopeir", Locale.ENGLISH)).isNull();
 	}
 
 	@Test
-	public void onSetContextCalledOnce() throws Exception {
+	void onSetContextCalledOnce() throws Exception {
 		TestView tv = (TestView) rb.resolveViewName("test", Locale.ENGLISH);
 		tv = (TestView) rb.resolveViewName("test", Locale.ENGLISH);
 		tv = (TestView) rb.resolveViewName("test", Locale.ENGLISH);
@@ -145,7 +146,7 @@ public class ResourceBundleViewResolverTests {
 	}
 
 	@Test
-	public void noSuchBasename() throws Exception {
+	void noSuchBasename() {
 		rb.setBasename("weoriwoierqupowiuer");
 		assertThatExceptionOfType(MissingResourceException.class).isThrownBy(() ->
 				rb.resolveViewName("debugView", Locale.ENGLISH));

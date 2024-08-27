@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@
 package org.springframework.web.servlet.mvc.annotation;
 
 import java.io.IOException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceAware;
@@ -60,7 +61,7 @@ public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionRes
 
 
 	@Override
-	public void setMessageSource(MessageSource messageSource) {
+	public void setMessageSource(@Nullable MessageSource messageSource) {
 		this.messageSource = messageSource;
 	}
 
@@ -71,8 +72,8 @@ public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionRes
 			HttpServletRequest request, HttpServletResponse response, @Nullable Object handler, Exception ex) {
 
 		try {
-			if (ex instanceof ResponseStatusException) {
-				return resolveResponseStatusException((ResponseStatusException) ex, request, response, handler);
+			if (ex instanceof ResponseStatusException rse) {
+				return resolveResponseStatusException(rse, request, response, handler);
 			}
 
 			ResponseStatus status = AnnotatedElementUtils.findMergedAnnotation(ex.getClass(), ResponseStatus.class);
@@ -80,8 +81,8 @@ public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionRes
 				return resolveResponseStatus(status, request, response, handler, ex);
 			}
 
-			if (ex.getCause() instanceof Exception) {
-				return doResolveException(request, response, handler, (Exception) ex.getCause());
+			if (ex.getCause() instanceof Exception cause) {
+				return doResolveException(request, response, handler, cause);
 			}
 		}
 		catch (Exception resolveEx) {
@@ -114,8 +115,10 @@ public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionRes
 
 	/**
 	 * Template method that handles an {@link ResponseStatusException}.
-	 * <p>The default implementation delegates to {@link #applyStatusAndReason}
-	 * with the status code and reason from the exception.
+	 * <p>The default implementation applies the headers from
+	 * {@link ResponseStatusException#getHeaders()} and delegates to
+	 * {@link #applyStatusAndReason} with the status code and reason from the
+	 * exception.
 	 * @param ex the exception
 	 * @param request current HTTP request
 	 * @param response current HTTP response
@@ -127,9 +130,8 @@ public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionRes
 	protected ModelAndView resolveResponseStatusException(ResponseStatusException ex,
 			HttpServletRequest request, HttpServletResponse response, @Nullable Object handler) throws Exception {
 
-		int statusCode = ex.getStatus().value();
-		String reason = ex.getReason();
-		return applyStatusAndReason(statusCode, reason, response);
+		ex.getHeaders().forEach((name, values) -> values.forEach(value -> response.addHeader(name, value)));
+		return applyStatusAndReason(ex.getStatusCode().value(), ex.getReason(), response);
 	}
 
 	/**

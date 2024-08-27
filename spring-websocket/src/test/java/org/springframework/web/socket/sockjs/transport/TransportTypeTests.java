@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,17 @@
 
 package org.springframework.web.socket.sockjs.transport;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Rossen Stoyanchev
  */
-public class TransportTypeTests {
+class TransportTypeTests {
 
 	@Test
-	public void testFromValue() {
+	void testFromValue() {
 		assertThat(TransportType.fromValue("websocket")).isEqualTo(TransportType.WEBSOCKET);
 		assertThat(TransportType.fromValue("xhr")).isEqualTo(TransportType.XHR);
 		assertThat(TransportType.fromValue("xhr_send")).isEqualTo(TransportType.XHR_SEND);

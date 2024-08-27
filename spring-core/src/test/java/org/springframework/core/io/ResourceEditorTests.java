@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,26 @@ package org.springframework.core.io;
 
 import java.beans.PropertyEditor;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.env.StandardEnvironment;
+import org.springframework.util.PlaceholderResolutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * Unit tests for the {@link ResourceEditor} class.
+ * Tests for {@link ResourceEditor}.
  *
  * @author Rick Evans
  * @author Arjen Poutsma
  * @author Dave Syer
  */
-public class ResourceEditorTests {
+class ResourceEditorTests {
 
 	@Test
-	public void sunnyDay() {
+	void sunnyDay() {
 		PropertyEditor editor = new ResourceEditor();
 		editor.setAsText("classpath:org/springframework/core/io/ResourceEditorTests.class");
 		Resource resource = (Resource) editor.getValue();
@@ -44,27 +46,27 @@ public class ResourceEditorTests {
 	}
 
 	@Test
-	public void ctorWithNullCtorArgs() {
+	void ctorWithNullCtorArgs() {
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				new ResourceEditor(null, null));
 	}
 
 	@Test
-	public void setAndGetAsTextWithNull() {
+	void setAndGetAsTextWithNull() {
 		PropertyEditor editor = new ResourceEditor();
 		editor.setAsText(null);
-		assertThat(editor.getAsText()).isEqualTo("");
+		assertThat(editor.getAsText()).isEmpty();
 	}
 
 	@Test
-	public void setAndGetAsTextWithWhitespaceResource() {
+	void setAndGetAsTextWithWhitespaceResource() {
 		PropertyEditor editor = new ResourceEditor();
 		editor.setAsText("  ");
-		assertThat(editor.getAsText()).isEqualTo("");
+		assertThat(editor.getAsText()).isEmpty();
 	}
 
 	@Test
-	public void testSystemPropertyReplacement() {
+	void systemPropertyReplacement() {
 		PropertyEditor editor = new ResourceEditor();
 		System.setProperty("test.prop", "foo");
 		try {
@@ -73,12 +75,12 @@ public class ResourceEditorTests {
 			assertThat(resolved.getFilename()).isEqualTo("foo");
 		}
 		finally {
-			System.getProperties().remove("test.prop");
+			System.clearProperty("test.prop");
 		}
 	}
 
 	@Test
-	public void testSystemPropertyReplacementWithUnresolvablePlaceholder() {
+	void systemPropertyReplacementWithUnresolvablePlaceholder() {
 		PropertyEditor editor = new ResourceEditor();
 		System.setProperty("test.prop", "foo");
 		try {
@@ -87,22 +89,22 @@ public class ResourceEditorTests {
 			assertThat(resolved.getFilename()).isEqualTo("foo-${bar}");
 		}
 		finally {
-			System.getProperties().remove("test.prop");
+			System.clearProperty("test.prop");
 		}
 	}
 
 	@Test
-	public void testStrictSystemPropertyReplacementWithUnresolvablePlaceholder() {
+	void strictSystemPropertyReplacementWithUnresolvablePlaceholder() {
 		PropertyEditor editor = new ResourceEditor(new DefaultResourceLoader(), new StandardEnvironment(), false);
 		System.setProperty("test.prop", "foo");
 		try {
-			assertThatIllegalArgumentException().isThrownBy(() -> {
+			assertThatExceptionOfType(PlaceholderResolutionException.class).isThrownBy(() -> {
 					editor.setAsText("${test.prop}-${bar}");
 					editor.getValue();
 			});
 		}
 		finally {
-			System.getProperties().remove("test.prop");
+			System.clearProperty("test.prop");
 		}
 	}
 

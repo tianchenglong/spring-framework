@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package org.springframework.cache.interceptor;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
@@ -35,10 +35,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author John Blum
  * @author Juergen Hoeller
  */
-public class CacheProxyFactoryBeanTests {
+class CacheProxyFactoryBeanTests {
 
 	@Test
-	public void configurationClassWithCacheProxyFactoryBean() {
+	void configurationClassWithCacheProxyFactoryBean() {
 		try (AnnotationConfigApplicationContext applicationContext =
 				new AnnotationConfigApplicationContext(CacheProxyFactoryBeanConfiguration.class)) {
 			Greeter greeter = applicationContext.getBean("greeter", Greeter.class);
@@ -113,7 +113,7 @@ public class CacheProxyFactoryBeanTests {
 
 	static class SimpleGreeter implements Greeter {
 
-		private final AtomicBoolean cacheMiss = new AtomicBoolean(false);
+		private final AtomicBoolean cacheMiss = new AtomicBoolean();
 
 		@Override
 		public boolean isCacheMiss() {

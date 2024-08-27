@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,13 +66,25 @@ public interface PathContainer {
 
 
 	/**
-	 * Parse the path value into a sequence of {@link Separator Separator} and
-	 * {@link PathSegment PathSegment} elements.
-	 * @param path the encoded, raw URL path value to parse
+	 * Parse the path value into a sequence of {@code "/"} {@link Separator Separator}
+	 * and {@link PathSegment PathSegment} elements.
+	 * @param path the encoded, raw path value to parse
 	 * @return the parsed path
 	 */
 	static PathContainer parsePath(String path) {
-		return DefaultPathContainer.createFromUrlPath(path);
+		return DefaultPathContainer.createFromUrlPath(path, Options.HTTP_PATH);
+	}
+
+	/**
+	 * Parse the path value into a sequence of {@link Separator Separator} and
+	 * {@link PathSegment PathSegment} elements.
+	 * @param path the encoded, raw path value to parse
+	 * @param options to customize parsing
+	 * @return the parsed path
+	 * @since 5.2
+	 */
+	static PathContainer parsePath(String path, Options options) {
+		return DefaultPathContainer.createFromUrlPath(path, options);
 	}
 
 
@@ -112,8 +124,60 @@ public interface PathContainer {
 
 		/**
 		 * Path parameters associated with this path segment.
+		 * @return an unmodifiable map containing the parameters
 		 */
 		MultiValueMap<String, String> parameters();
+	}
+
+
+	/**
+	 * Options to customize parsing based on the type of input path.
+	 * @since 5.2
+	 */
+	class Options {
+
+		/**
+		 * Options for HTTP URL paths.
+		 * <p>Separator '/' with URL decoding and parsing of path parameters.
+		 */
+		public static final Options HTTP_PATH = Options.create('/', true);
+
+		/**
+		 * Options for a message route.
+		 * <p>Separator '.' with neither URL decoding nor parsing of path parameters.
+		 * Escape sequences for the separator character in segment values are still
+		 * decoded.
+		 */
+		public static final Options MESSAGE_ROUTE = Options.create('.', false);
+
+		private final char separator;
+
+		private final boolean decodeAndParseSegments;
+
+		private Options(char separator, boolean decodeAndParseSegments) {
+			this.separator = separator;
+			this.decodeAndParseSegments = decodeAndParseSegments;
+		}
+
+		public char separator() {
+			return this.separator;
+		}
+
+		public boolean shouldDecodeAndParseSegments() {
+			return this.decodeAndParseSegments;
+		}
+
+		/**
+		 * Create an {@link Options} instance with the given settings.
+		 * @param separator the separator for parsing the path into segments;
+		 * currently this must be slash or dot.
+		 * @param decodeAndParseSegments whether to URL decode path segment
+		 * values and parse path parameters. If set to false, only escape
+		 * sequences for the separator char are decoded.
+		 */
+		public static Options create(char separator, boolean decodeAndParseSegments) {
+			return new Options(separator, decodeAndParseSegments);
+		}
 	}
 
 }

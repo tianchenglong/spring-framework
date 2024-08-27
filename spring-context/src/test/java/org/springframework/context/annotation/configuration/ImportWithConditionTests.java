@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.context.annotation.configuration;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -33,12 +33,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Andy Wilkinson
  */
-public class ImportWithConditionTests {
+class ImportWithConditionTests {
 
 	private AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
 	@Test
-	public void conditionalThenUnconditional() throws Exception {
+	void conditionalThenUnconditional() {
 		this.context.register(ConditionalThenUnconditional.class);
 		this.context.refresh();
 		assertThat(this.context.containsBean("beanTwo")).isFalse();
@@ -46,7 +46,7 @@ public class ImportWithConditionTests {
 	}
 
 	@Test
-	public void unconditionalThenConditional() throws Exception {
+	void unconditionalThenConditional() {
 		this.context.register(UnconditionalThenConditional.class);
 		this.context.refresh();
 		assertThat(this.context.containsBean("beanTwo")).isFalse();
@@ -59,6 +59,7 @@ public class ImportWithConditionTests {
 	protected static class ConditionalThenUnconditional {
 
 		@Autowired
+		@SuppressWarnings("unused")
 		private BeanOne beanOne;
 	}
 
@@ -68,6 +69,7 @@ public class ImportWithConditionTests {
 	protected static class UnconditionalThenConditional {
 
 		@Autowired
+		@SuppressWarnings("unused")
 		private BeanOne beanOne;
 	}
 

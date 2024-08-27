@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.springframework.http.client.reactive;
 
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.Collection;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
@@ -26,18 +25,22 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.NettyOutbound;
+import reactor.netty.channel.ChannelOperations;
 import reactor.netty.http.client.HttpClientRequest;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
+import org.springframework.http.support.Netty4HeadersAdapter;
 
 /**
  * {@link ClientHttpRequest} implementation for the Reactor-Netty HTTP client.
  *
  * @author Brian Clozel
+ * @author Rossen Stoyanchev
  * @since 5.0
  * @see reactor.netty.http.client.HttpClient
  */
@@ -64,11 +67,6 @@ class ReactorClientHttpRequest extends AbstractClientHttpRequest implements Zero
 
 
 	@Override
-	public DataBufferFactory bufferFactory() {
-		return this.bufferFactory;
-	}
-
-	@Override
 	public HttpMethod getMethod() {
 		return this.httpMethod;
 	}
@@ -76,6 +74,17 @@ class ReactorClientHttpRequest extends AbstractClientHttpRequest implements Zero
 	@Override
 	public URI getURI() {
 		return this.uri;
+	}
+
+	@Override
+	public DataBufferFactory bufferFactory() {
+		return this.bufferFactory;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> T getNativeRequest() {
+		return (T) this.request;
 	}
 
 	@Override
@@ -121,9 +130,28 @@ class ReactorClientHttpRequest extends AbstractClientHttpRequest implements Zero
 
 	@Override
 	protected void applyCookies() {
-		getCookies().values().stream().flatMap(Collection::stream)
-				.map(cookie -> new DefaultCookie(cookie.getName(), cookie.getValue()))
-				.forEach(this.request::addCookie);
+		getCookies().values().forEach(values -> values.forEach(value -> {
+			DefaultCookie cookie = new DefaultCookie(value.getName(), value.getValue());
+			this.request.addCookie(cookie);
+		}));
+	}
+
+	/**
+	 * Saves the {@link #getAttributes() request attributes} to the
+	 * {@link reactor.netty.channel.ChannelOperations#channel() channel} as a single map
+	 * attribute under the key {@link ReactorClientHttpConnector#ATTRIBUTES_KEY}.
+	 */
+	@Override
+	protected void applyAttributes() {
+		if (!getAttributes().isEmpty()) {
+			((ChannelOperations<?, ?>) this.request).channel()
+					.attr(ReactorClientHttpConnector.ATTRIBUTES_KEY).set(getAttributes());
+		}
+	}
+
+	@Override
+	protected HttpHeaders initReadOnlyHeaders() {
+		return HttpHeaders.readOnlyHttpHeaders(new Netty4HeadersAdapter(this.request.requestHeaders()));
 	}
 
 }

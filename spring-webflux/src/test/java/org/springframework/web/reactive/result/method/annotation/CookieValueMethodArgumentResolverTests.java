@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package org.springframework.web.reactive.result.method.annotation;
 
 import java.lang.reflect.Method;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -28,12 +28,12 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.ReactiveAdapterRegistry;
 import org.springframework.core.annotation.SynthesizingMethodParameter;
 import org.springframework.http.HttpCookie;
-import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
-import org.springframework.mock.web.test.server.MockServerWebExchange;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.reactive.BindingContext;
 import org.springframework.web.server.ServerWebInputException;
+import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest;
+import org.springframework.web.testfixture.server.MockServerWebExchange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  *
  * @author Rossen Stoyanchev
  */
-public class CookieValueMethodArgumentResolverTests {
+class CookieValueMethodArgumentResolverTests {
 
 	private CookieValueMethodArgumentResolver resolver;
 
@@ -55,9 +55,8 @@ public class CookieValueMethodArgumentResolverTests {
 	private MethodParameter cookieMonoParameter;
 
 
-	@Before
-	@SuppressWarnings("resource")
-	public void setup() throws Exception {
+	@BeforeEach
+	void setup() throws Exception {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		context.refresh();
 
@@ -74,13 +73,13 @@ public class CookieValueMethodArgumentResolverTests {
 
 
 	@Test
-	public void supportsParameter() {
+	void supportsParameter() {
 		assertThat(this.resolver.supportsParameter(this.cookieParameter)).isTrue();
 		assertThat(this.resolver.supportsParameter(this.cookieStringParameter)).isTrue();
 	}
 
 	@Test
-	public void doesNotSupportParameter() {
+	void doesNotSupportParameter() {
 		assertThat(this.resolver.supportsParameter(this.stringParameter)).isFalse();
 		assertThatIllegalStateException().isThrownBy(() ->
 				this.resolver.supportsParameter(this.cookieMonoParameter))
@@ -88,7 +87,7 @@ public class CookieValueMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveCookieArgument() {
+	void resolveCookieArgument() {
 		HttpCookie expected = new HttpCookie("name", "foo");
 		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").cookie(expected));
 
@@ -99,7 +98,7 @@ public class CookieValueMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveCookieStringArgument() {
+	void resolveCookieStringArgument() {
 		HttpCookie cookie = new HttpCookie("name", "foo");
 		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").cookie(cookie));
 
@@ -110,7 +109,7 @@ public class CookieValueMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveCookieDefaultValue() {
+	void resolveCookieDefaultValue() {
 		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 		Object result = this.resolver.resolveArgument(this.cookieStringParameter, this.bindingContext, exchange).block();
 
@@ -120,7 +119,7 @@ public class CookieValueMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void notFound() {
+	void notFound() {
 		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 		Mono<Object> mono = resolver.resolveArgument(this.cookieParameter, this.bindingContext, exchange);
 		StepVerifier.create(mono)

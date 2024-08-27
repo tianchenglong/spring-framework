@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.oxm;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLEventWriter;
@@ -28,14 +30,14 @@ import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.stax.StAXResult;
 import javax.xml.transform.stream.StreamResult;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
 
-import org.springframework.tests.XmlContent;
+import org.springframework.core.testfixture.xml.XmlContent;
 import org.springframework.util.xml.StaxUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +56,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 
 	protected Object flights;
 
-	@Before
+	@BeforeEach
 	public final void setUp() throws Exception {
 		marshaller = createMarshaller();
 		flights = createFlights();
@@ -65,7 +67,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	protected abstract Object createFlights();
 
 	@Test
-	public void marshalDOMResult() throws Exception {
+	void marshalDOMResult() throws Exception {
 		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 		documentBuilderFactory.setNamespaceAware(true);
 		DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
@@ -88,7 +90,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	}
 
 	@Test
-	public void marshalEmptyDOMResult() throws Exception {
+	void marshalEmptyDOMResult() throws Exception {
 		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 		documentBuilderFactory.setNamespaceAware(true);
 		DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
@@ -113,7 +115,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	}
 
 	@Test
-	public void marshalStreamResultWriter() throws Exception {
+	void marshalStreamResultWriter() throws Exception {
 		StringWriter writer = new StringWriter();
 		StreamResult result = new StreamResult(writer);
 		marshaller.marshal(flights, result);
@@ -121,15 +123,15 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	}
 
 	@Test
-	public void marshalStreamResultOutputStream() throws Exception {
+	void marshalStreamResultOutputStream() throws Exception {
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		StreamResult result = new StreamResult(os);
 		marshaller.marshal(flights, result);
-		assertThat(XmlContent.of(new String(os.toByteArray(), "UTF-8"))).isSimilarToIgnoringWhitespace(EXPECTED_STRING);
+		assertThat(XmlContent.of(os.toString(StandardCharsets.UTF_8))).isSimilarToIgnoringWhitespace(EXPECTED_STRING);
 	}
 
 	@Test
-	public void marshalStaxResultStreamWriter() throws Exception {
+	void marshalStaxResultStreamWriter() throws Exception {
 		XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
 		StringWriter writer = new StringWriter();
 		XMLStreamWriter streamWriter = outputFactory.createXMLStreamWriter(writer);
@@ -139,7 +141,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	}
 
 	@Test
-	public void marshalStaxResultEventWriter() throws Exception {
+	void marshalStaxResultEventWriter() throws Exception {
 		XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
 		StringWriter writer = new StringWriter();
 		XMLEventWriter eventWriter = outputFactory.createXMLEventWriter(writer);
@@ -149,7 +151,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	}
 
 	@Test
-	public void marshalJaxp14StaxResultStreamWriter() throws Exception {
+	void marshalJaxp14StaxResultStreamWriter() throws Exception {
 		XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
 		StringWriter writer = new StringWriter();
 		XMLStreamWriter streamWriter = outputFactory.createXMLStreamWriter(writer);
@@ -159,7 +161,7 @@ public abstract class AbstractMarshallerTests<M extends Marshaller> {
 	}
 
 	@Test
-	public void marshalJaxp14StaxResultEventWriter() throws Exception {
+	void marshalJaxp14StaxResultEventWriter() throws Exception {
 		XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
 		StringWriter writer = new StringWriter();
 		XMLEventWriter eventWriter = outputFactory.createXMLEventWriter(writer);

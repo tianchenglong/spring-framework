@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,10 @@
 
 package org.springframework.test.context.env;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.aot.DisabledInAotMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,18 +32,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @since 4.1
  */
 @TestPropertySource(properties = { "explicit = inlined", "extended = inlined1", "extended = inlined2" })
-public class MergedPropertiesFilesOverriddenByInlinedPropertiesTestPropertySourceTests extends
+// Since ExplicitPropertiesFileTestPropertySourceTests is disabled in AOT mode, this class must be also.
+@DisabledInAotMode
+class MergedPropertiesFilesOverriddenByInlinedPropertiesTestPropertySourceTests extends
 		MergedPropertiesFilesTestPropertySourceTests {
 
 	@Test
 	@Override
-	public void verifyPropertiesAreAvailableInEnvironment() {
+	void verifyPropertiesAreAvailableInEnvironment() {
 		assertThat(env.getProperty("explicit")).isEqualTo("inlined");
 	}
 
 	@Test
 	@Override
-	public void verifyExtendedPropertiesAreAvailableInEnvironment() {
+	void verifyExtendedPropertiesAreAvailableInEnvironment() {
 		assertThat(env.getProperty("extended")).isEqualTo("inlined2");
 	}
 

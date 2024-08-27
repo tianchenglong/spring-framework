@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.jdbc.support.SQLStateSQLExceptionTranslator;
-import org.springframework.tests.sample.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -43,15 +43,15 @@ import static org.mockito.Mockito.verify;
  * @author Sam Brannen
  * @since 02.08.2004
  */
-public class RowMapperTests {
+class RowMapperTests {
 
-	private final Connection connection = mock(Connection.class);
+	private final Connection connection = mock();
 
-	private final Statement statement = mock(Statement.class);
+	private final Statement statement = mock();
 
-	private final PreparedStatement preparedStatement = mock(PreparedStatement.class);
+	private final PreparedStatement preparedStatement = mock();
 
-	private final ResultSet resultSet = mock(ResultSet.class);
+	private final ResultSet resultSet = mock();
 
 	private final JdbcTemplate template = new JdbcTemplate();
 
@@ -60,8 +60,8 @@ public class RowMapperTests {
 
 	private List<TestBean> result;
 
-	@Before
-	public void setUp() throws SQLException {
+	@BeforeEach
+	void setUp() throws SQLException {
 		given(connection.createStatement()).willReturn(statement);
 		given(connection.prepareStatement(anyString())).willReturn(preparedStatement);
 		given(statement.executeQuery(anyString())).willReturn(resultSet);
@@ -75,16 +75,15 @@ public class RowMapperTests {
 		template.afterPropertiesSet();
 	}
 
-	@After
-	public void verifyClosed() throws Exception {
+	@AfterEach
+	void verifyClosed() throws Exception {
 		verify(resultSet).close();
-		// verify(connection).close();
 	}
 
-	@After
-	public void verifyResults() {
+	@AfterEach
+	void verifyResults() {
 		assertThat(result).isNotNull();
-		assertThat(result.size()).isEqualTo(2);
+		assertThat(result).hasSize(2);
 		TestBean testBean1 = result.get(0);
 		TestBean testBean2 = result.get(1);
 		assertThat(testBean1.getName()).isEqualTo("tb1");
@@ -94,25 +93,26 @@ public class RowMapperTests {
 	}
 
 	@Test
-	public void staticQueryWithRowMapper() throws SQLException {
+	void staticQueryWithRowMapper() throws SQLException {
 		result = template.query("some SQL", testRowMapper);
 		verify(statement).close();
 	}
 
 	@Test
-	public void preparedStatementCreatorWithRowMapper() throws SQLException {
+	void preparedStatementCreatorWithRowMapper() throws SQLException {
 		result = template.query(con -> preparedStatement, testRowMapper);
 		verify(preparedStatement).close();
 	}
 
 	@Test
-	public void preparedStatementSetterWithRowMapper() throws SQLException {
+	void preparedStatementSetterWithRowMapper() throws SQLException {
 		result = template.query("some SQL", ps -> ps.setString(1, "test"), testRowMapper);
 		verify(preparedStatement).setString(1, "test");
 		verify(preparedStatement).close();
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	public void queryWithArgsAndRowMapper() throws SQLException {
 		result = template.query("some SQL", new Object[] { "test1", "test2" }, testRowMapper);
 		preparedStatement.setString(1, "test1");
@@ -121,7 +121,7 @@ public class RowMapperTests {
 	}
 
 	@Test
-	public void queryWithArgsAndTypesAndRowMapper() throws SQLException {
+	void queryWithArgsAndTypesAndRowMapper() throws SQLException {
 		result = template.query("some SQL",
 				new Object[] { "test1", "test2" },
 				new int[] { Types.VARCHAR, Types.VARCHAR },

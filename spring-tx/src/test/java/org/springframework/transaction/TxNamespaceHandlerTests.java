@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@ package org.springframework.transaction;
 
 import java.lang.reflect.Method;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.testfixture.beans.ITestBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.transaction.CallCountingTransactionManager;
 import org.springframework.transaction.interceptor.TransactionAttribute;
 import org.springframework.transaction.interceptor.TransactionAttributeSource;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
+import org.springframework.transaction.testfixture.CallCountingTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Rob Harrop
  * @author Adrian Colyer
  */
-public class TxNamespaceHandlerTests {
+class TxNamespaceHandlerTests {
 
 	private ApplicationContext context;
 
@@ -46,8 +46,8 @@ public class TxNamespaceHandlerTests {
 	private Method setAgeMethod;
 
 
-	@Before
-	public void setup() throws Exception {
+	@BeforeEach
+	void setup() throws Exception {
 		this.context = new ClassPathXmlApplicationContext("txNamespaceHandlerTests.xml", getClass());
 		this.getAgeMethod = ITestBean.class.getMethod("getAge");
 		this.setAgeMethod = ITestBean.class.getMethod("setAge", int.class);
@@ -55,13 +55,13 @@ public class TxNamespaceHandlerTests {
 
 
 	@Test
-	public void isProxy() {
+	void isProxy() {
 		ITestBean bean = getTestBean();
 		assertThat(AopUtils.isAopProxy(bean)).as("testBean is not a proxy").isTrue();
 	}
 
 	@Test
-	public void invokeTransactional() {
+	void invokeTransactional() {
 		ITestBean testBean = getTestBean();
 		CallCountingTransactionManager ptm = (CallCountingTransactionManager) context.getBean("transactionManager");
 
@@ -69,6 +69,7 @@ public class TxNamespaceHandlerTests {
 		assertThat(ptm.begun).as("Should not have any started transactions").isEqualTo(0);
 		testBean.getName();
 		assertThat(ptm.lastDefinition.isReadOnly()).isTrue();
+		assertThat(ptm.lastDefinition.getTimeout()).isEqualTo(5);
 		assertThat(ptm.begun).as("Should have 1 started transaction").isEqualTo(1);
 		assertThat(ptm.commits).as("Should have 1 committed transaction").isEqualTo(1);
 
@@ -84,7 +85,7 @@ public class TxNamespaceHandlerTests {
 	}
 
 	@Test
-	public void rollbackRules() {
+	void rollbackRules() {
 		TransactionInterceptor txInterceptor = (TransactionInterceptor) context.getBean("txRollbackAdvice");
 		TransactionAttributeSource txAttrSource = txInterceptor.getTransactionAttributeSource();
 		TransactionAttribute txAttr = txAttrSource.getTransactionAttribute(getAgeMethod,ITestBean.class);

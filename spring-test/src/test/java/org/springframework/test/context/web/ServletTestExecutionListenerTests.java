@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@
 
 package org.springframework.test.context.web;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.BDDMockito;
 
-import org.springframework.context.ApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletContext;
@@ -39,24 +38,24 @@ import static org.springframework.test.context.web.ServletTestExecutionListener.
 import static org.springframework.test.context.web.ServletTestExecutionListener.RESET_REQUEST_CONTEXT_HOLDER_ATTRIBUTE;
 
 /**
- * Unit tests for {@link ServletTestExecutionListener}.
+ * Tests for {@link ServletTestExecutionListener}.
  *
  * @author Sam Brannen
  * @author Phillip Webb
  * @since 3.2.6
  */
-public class ServletTestExecutionListenerTests {
+class ServletTestExecutionListenerTests {
 
 	private static final String SET_UP_OUTSIDE_OF_STEL = "setUpOutsideOfStel";
 
-	private final WebApplicationContext wac = mock(WebApplicationContext.class);
+	private final WebApplicationContext wac = mock();
 	private final MockServletContext mockServletContext = new MockServletContext();
-	private final TestContext testContext = mock(TestContext.class);
+	private final TestContext testContext = mock();
 	private final ServletTestExecutionListener listener = new ServletTestExecutionListener();
 
 
-	@Before
-	public void setUp() {
+	@BeforeEach
+	void setUp() {
 		given(wac.getServletContext()).willReturn(mockServletContext);
 		given(testContext.getApplicationContext()).willReturn(wac);
 
@@ -71,9 +70,9 @@ public class ServletTestExecutionListenerTests {
 	}
 
 	@Test
-	public void standardApplicationContext() throws Exception {
+	void standardApplicationContext() throws Exception {
 		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(getClass());
-		given(testContext.getApplicationContext()).willReturn(mock(ApplicationContext.class));
+		given(testContext.getApplicationContext()).willReturn(mock());
 
 		listener.beforeTestClass(testContext);
 		assertSetUpOutsideOfStelAttributeExists();
@@ -89,7 +88,7 @@ public class ServletTestExecutionListenerTests {
 	}
 
 	@Test
-	public void legacyWebTestCaseWithoutExistingRequestAttributes() throws Exception {
+	void legacyWebTestCaseWithoutExistingRequestAttributes() throws Exception {
 		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(LegacyWebTestCase.class);
 
 		RequestContextHolder.resetRequestAttributes();
@@ -112,7 +111,7 @@ public class ServletTestExecutionListenerTests {
 	}
 
 	@Test
-	public void legacyWebTestCaseWithPresetRequestAttributes() throws Exception {
+	void legacyWebTestCaseWithPresetRequestAttributes() throws Exception {
 		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(LegacyWebTestCase.class);
 
 		listener.beforeTestClass(testContext);
@@ -134,7 +133,7 @@ public class ServletTestExecutionListenerTests {
 	}
 
 	@Test
-	public void atWebAppConfigTestCaseWithoutExistingRequestAttributes() throws Exception {
+	void atWebAppConfigTestCaseWithoutExistingRequestAttributes() throws Exception {
 		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(AtWebAppConfigWebTestCase.class);
 
 		RequestContextHolder.resetRequestAttributes();
@@ -145,7 +144,7 @@ public class ServletTestExecutionListenerTests {
 	}
 
 	@Test
-	public void atWebAppConfigTestCaseWithPresetRequestAttributes() throws Exception {
+	void atWebAppConfigTestCaseWithPresetRequestAttributes() throws Exception {
 		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(AtWebAppConfigWebTestCase.class);
 
 		listener.beforeTestClass(testContext);
@@ -158,7 +157,7 @@ public class ServletTestExecutionListenerTests {
 	 * @since 4.3
 	 */
 	@Test
-	public void activateListenerWithoutExistingRequestAttributes() throws Exception {
+	void activateListenerWithoutExistingRequestAttributes() throws Exception {
 		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(NoAtWebAppConfigWebTestCase.class);
 		given(testContext.getAttribute(ServletTestExecutionListener.ACTIVATE_LISTENER)).willReturn(true);
 

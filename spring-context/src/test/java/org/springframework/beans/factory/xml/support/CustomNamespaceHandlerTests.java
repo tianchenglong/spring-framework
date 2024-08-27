@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -34,6 +34,7 @@ import org.springframework.aop.config.AbstractInterceptorDrivenBeanDefinitionDec
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.interceptor.DebugInterceptor;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.aop.testfixture.interceptor.NopInterceptor;
 import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.beans.factory.BeanCreationException;
@@ -51,27 +52,26 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.beans.factory.xml.PluggableSchemaResolver;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.springframework.beans.testfixture.beans.ITestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.tests.aop.interceptor.NopInterceptor;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.sample.beans.TestBean;
 
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
- * Unit tests for custom XML namespace handler implementations.
+ * Tests for custom XML namespace handler implementations.
  *
  * @author Rob Harrop
  * @author Rick Evans
  * @author Chris Beams
  * @author Juergen Hoeller
  */
-public class CustomNamespaceHandlerTests {
+class CustomNamespaceHandlerTests {
 
 	private static final Class<?> CLASS = CustomNamespaceHandlerTests.class;
 	private static final String CLASSNAME = CLASS.getSimpleName();
@@ -84,8 +84,8 @@ public class CustomNamespaceHandlerTests {
 	private GenericApplicationContext beanFactory;
 
 
-	@Before
-	public void setUp() throws Exception {
+	@BeforeEach
+	void setUp() {
 		NamespaceHandlerResolver resolver = new DefaultNamespaceHandlerResolver(CLASS.getClassLoader(), NS_PROPS);
 		this.beanFactory = new GenericApplicationContext();
 		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(this.beanFactory);
@@ -98,73 +98,74 @@ public class CustomNamespaceHandlerTests {
 
 
 	@Test
-	public void testSimpleParser() throws Exception {
+	void testSimpleParser() {
 		TestBean bean = (TestBean) this.beanFactory.getBean("testBean");
 		assertTestBean(bean);
 	}
 
 	@Test
-	public void testSimpleDecorator() throws Exception {
+	void testSimpleDecorator() {
 		TestBean bean = (TestBean) this.beanFactory.getBean("customisedTestBean");
 		assertTestBean(bean);
 	}
 
 	@Test
-	public void testProxyingDecorator() throws Exception {
+	void testProxyingDecorator() {
 		ITestBean bean = (ITestBean) this.beanFactory.getBean("debuggingTestBean");
 		assertTestBean(bean);
 		assertThat(AopUtils.isAopProxy(bean)).isTrue();
 		Advisor[] advisors = ((Advised) bean).getAdvisors();
-		assertThat(advisors.length).as("Incorrect number of advisors").isEqualTo(1);
+		assertThat(advisors).as("Incorrect number of advisors").hasSize(1);
 		assertThat(advisors[0].getAdvice().getClass()).as("Incorrect advice class").isEqualTo(DebugInterceptor.class);
 	}
 
 	@Test
-	public void testProxyingDecoratorNoInstance() throws Exception {
+	void testProxyingDecoratorNoInstance() {
 		String[] beanNames = this.beanFactory.getBeanNamesForType(ApplicationListener.class);
-		assertThat(Arrays.asList(beanNames).contains("debuggingTestBeanNoInstance")).isTrue();
+		assertThat(Arrays.asList(beanNames)).contains("debuggingTestBeanNoInstance");
 		assertThat(this.beanFactory.getType("debuggingTestBeanNoInstance")).isEqualTo(ApplicationListener.class);
 		assertThatExceptionOfType(BeanCreationException.class).isThrownBy(() ->
 				this.beanFactory.getBean("debuggingTestBeanNoInstance"))
-			.satisfies(ex -> assertThat(ex.getRootCause()).isInstanceOf(BeanInstantiationException.class));
+			.havingRootCause()
+			.isInstanceOf(BeanInstantiationException.class);
 	}
 
 	@Test
-	public void testChainedDecorators() throws Exception {
+	void testChainedDecorators() {
 		ITestBean bean = (ITestBean) this.beanFactory.getBean("chainedTestBean");
 		assertTestBean(bean);
 		assertThat(AopUtils.isAopProxy(bean)).isTrue();
 		Advisor[] advisors = ((Advised) bean).getAdvisors();
-		assertThat(advisors.length).as("Incorrect number of advisors").isEqualTo(2);
+		assertThat(advisors).as("Incorrect number of advisors").hasSize(2);
 		assertThat(advisors[0].getAdvice().getClass()).as("Incorrect advice class").isEqualTo(DebugInterceptor.class);
 		assertThat(advisors[1].getAdvice().getClass()).as("Incorrect advice class").isEqualTo(NopInterceptor.class);
 	}
 
 	@Test
-	public void testDecorationViaAttribute() throws Exception {
+	void testDecorationViaAttribute() {
 		BeanDefinition beanDefinition = this.beanFactory.getBeanDefinition("decorateWithAttribute");
 		assertThat(beanDefinition.getAttribute("objectName")).isEqualTo("foo");
 	}
 
 	@Test  // SPR-2728
-	public void testCustomElementNestedWithinUtilList() throws Exception {
+	public void testCustomElementNestedWithinUtilList() {
 		List<?> things = (List<?>) this.beanFactory.getBean("list.of.things");
 		assertThat(things).isNotNull();
-		assertThat(things.size()).isEqualTo(2);
+		assertThat(things).hasSize(2);
 	}
 
 	@Test  // SPR-2728
-	public void testCustomElementNestedWithinUtilSet() throws Exception {
+	public void testCustomElementNestedWithinUtilSet() {
 		Set<?> things = (Set<?>) this.beanFactory.getBean("set.of.things");
 		assertThat(things).isNotNull();
-		assertThat(things.size()).isEqualTo(2);
+		assertThat(things).hasSize(2);
 	}
 
 	@Test  // SPR-2728
-	public void testCustomElementNestedWithinUtilMap() throws Exception {
+	public void testCustomElementNestedWithinUtilMap() {
 		Map<?, ?> things = (Map<?, ?>) this.beanFactory.getBean("map.of.things");
 		assertThat(things).isNotNull();
-		assertThat(things.size()).isEqualTo(2);
+		assertThat(things).hasSize(2);
 	}
 
 
@@ -259,7 +260,7 @@ final class TestNamespaceHandler extends NamespaceHandlerSupport {
 			Element element = (Element) node;
 			BeanDefinition def = definition.getBeanDefinition();
 
-			MutablePropertyValues mpvs = (def.getPropertyValues() == null) ? new MutablePropertyValues() : def.getPropertyValues();
+			MutablePropertyValues mpvs = (def.getPropertyValues() == null ? new MutablePropertyValues() : def.getPropertyValues());
 			mpvs.add("name", element.getAttribute("name"));
 			mpvs.add("age", element.getAttribute("age"));
 

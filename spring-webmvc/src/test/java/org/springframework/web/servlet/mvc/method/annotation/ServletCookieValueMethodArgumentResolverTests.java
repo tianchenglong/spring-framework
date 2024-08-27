@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@
 package org.springframework.web.servlet.mvc.method.annotation;
 
 import java.lang.reflect.Method;
-import javax.servlet.http.Cookie;
 
-import org.junit.Before;
-import org.junit.Test;
+import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.SynthesizingMethodParameter;
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.mock.web.test.MockHttpServletResponse;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
+import org.springframework.web.testfixture.servlet.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Arjen Poutsma
  * @author Rossen Stoyanchev
  */
-public class ServletCookieValueMethodArgumentResolverTests {
+class ServletCookieValueMethodArgumentResolverTests {
 
 	private ServletCookieValueMethodArgumentResolver resolver;
 
@@ -49,8 +49,8 @@ public class ServletCookieValueMethodArgumentResolverTests {
 	private MethodParameter cookieStringParameter;
 
 
-	@Before
-	public void setup() throws Exception {
+	@BeforeEach
+	void setup() throws Exception {
 		resolver = new ServletCookieValueMethodArgumentResolver(null);
 		request = new MockHttpServletRequest();
 		webRequest = new ServletWebRequest(request, new MockHttpServletResponse());
@@ -62,7 +62,7 @@ public class ServletCookieValueMethodArgumentResolverTests {
 
 
 	@Test
-	public void resolveCookieArgument() throws Exception {
+	void resolveCookieArgument() throws Exception {
 		Cookie expected = new Cookie("name", "foo");
 		request.setCookies(expected);
 
@@ -71,7 +71,7 @@ public class ServletCookieValueMethodArgumentResolverTests {
 	}
 
 	@Test
-	public void resolveCookieStringArgument() throws Exception {
+	void resolveCookieStringArgument() throws Exception {
 		Cookie cookie = new Cookie("name", "foo");
 		request.setCookies(cookie);
 
@@ -79,8 +79,20 @@ public class ServletCookieValueMethodArgumentResolverTests {
 		assertThat(result).as("Invalid result").isEqualTo(cookie.getValue());
 	}
 
+	@Test // gh-26989
+	public void resolveCookieWithEncodingTurnedOff() throws Exception {
+		Cookie cookie = new Cookie("name", "Tl=Q/0AUSOx[n)2z4(t]20FZv#?[Ge%H");
+		request.setCookies(cookie);
 
-	public void params(@CookieValue("name") Cookie cookie,
+		this.resolver.setUrlDecode(false);
+		String result = (String) resolver.resolveArgument(cookieStringParameter, null, webRequest, null);
+
+		assertThat(result).as("Invalid result").isEqualTo(cookie.getValue());
+	}
+
+
+	public void params(
+			@CookieValue("name") Cookie cookie,
 			@CookieValue(name = "name", defaultValue = "bar") String cookieString) {
 	}
 

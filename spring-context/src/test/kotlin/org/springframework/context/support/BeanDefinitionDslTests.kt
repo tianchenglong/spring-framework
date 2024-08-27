@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,23 @@
 
 package org.springframework.context.support
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatExceptionOfType
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import org.springframework.beans.factory.NoSuchBeanDefinitionException
+import org.springframework.beans.factory.aot.BeanRegistrationAotProcessor
 import org.springframework.beans.factory.getBean
+import org.springframework.beans.factory.getBeanProvider
 import org.springframework.context.support.BeanDefinitionDsl.*
-import org.springframework.core.env.SimpleCommandLinePropertySource
+import org.springframework.core.Ordered
 import org.springframework.core.env.get
-import org.springframework.mock.env.MockPropertySource
+import org.springframework.core.testfixture.env.MockPropertySource
 import java.util.stream.Collectors
 
 @Suppress("UNUSED_EXPRESSION")
 class BeanDefinitionDslTests {
-	
+
 	@Test
 	fun `Declare beans with the functional Kotlin DSL`() {
 		val beans = beans {
@@ -42,10 +46,10 @@ class BeanDefinitionDslTests {
 			refresh()
 		}
 		
-		assertNotNull(context.getBean<Foo>())
-		assertNotNull(context.getBean<Bar>("bar"))
-		assertTrue(context.isPrototype("bar"))
-		assertNotNull(context.getBean<Baz>())
+		context.getBean<Foo>()
+		context.getBean<Bar>("bar")
+		assertThat(context.isPrototype("bar")).isTrue()
+		context.getBean<Baz>()
 	}
 
 	@Test
@@ -69,13 +73,9 @@ class BeanDefinitionDslTests {
 			refresh()
 		}
 
-		assertNotNull(context.getBean<Foo>())
-		assertNotNull(context.getBean<Bar>("bar"))
-		try { 
-			context.getBean<Baz>()
-			fail("Expect NoSuchBeanDefinitionException to be thrown")
-		}
-		catch(ex: NoSuchBeanDefinitionException) { null }
+		context.getBean<Foo>()
+		context.getBean<Bar>("bar")
+		assertThatExceptionOfType(NoSuchBeanDefinitionException::class.java).isThrownBy { context.getBean<Baz>() }
 	}
 
 	@Test
@@ -92,19 +92,15 @@ class BeanDefinitionDslTests {
 		}
 
 		val context = GenericApplicationContext().apply {
-			environment.propertySources.addFirst(SimpleCommandLinePropertySource("--name=foofoo"))
+			environment.propertySources.addFirst(org.springframework.core.env.SimpleCommandLinePropertySource("--name=foofoo"))
 			beans.initialize(this)
 			refresh()
 		}
 
-		assertNotNull(context.getBean<Foo>())
-		assertNotNull(context.getBean<Bar>("bar"))
-		assertEquals("foofoo", context.getBean<FooFoo>().name)
-		try {
-			context.getBean<Baz>()
-			fail("Expect NoSuchBeanDefinitionException to be thrown")
-		}
-		catch(ex: NoSuchBeanDefinitionException) { null }
+		context.getBean<Foo>()
+		context.getBean<Bar>("bar")
+		assertThat(context.getBean<FooFoo>().name).isEqualTo("foofoo")
+		assertThatExceptionOfType(NoSuchBeanDefinitionException::class.java).isThrownBy { context.getBean<Baz>() }
 	}
 
 	@Test  // SPR-16412
@@ -123,7 +119,7 @@ class BeanDefinitionDslTests {
 		}
 
 		for (i in 1..5) {
-			assertNotNull(context.getBean("string$i"))
+			context.getBean("string$i")
 		}
 	}
 
@@ -141,7 +137,7 @@ class BeanDefinitionDslTests {
 		}
 
 		val barbar = context.getBean<BarBar>()
-		assertEquals(2, barbar.foos.size)
+		assertThat(barbar.foos.size).isEqualTo(2)
 	}
 
 	@Test  // SPR-17292
@@ -162,6 +158,7 @@ class BeanDefinitionDslTests {
 		val beans = beans {
 			bean<Bar>()
 			bean(::baz)
+			bean(::foo)
 		}
 		val context = GenericApplicationContext().apply {
 			beans.initialize(this)
@@ -170,6 +167,76 @@ class BeanDefinitionDslTests {
 		context.getBean<Baz>()
 	}
 	
+
+	@Test
+	fun `Declare beans with accepted profiles`() {
+		val beans = beans {
+			profile("foo") { bean<Foo>() }
+			profile("!bar") { bean<Bar>() }
+			profile("bar | barbar") { bean<BarBar>() }
+			profile("baz & buz") { bean<Baz>() }
+			profile("baz & foo") { bean<FooFoo>() }
+		}
+		val context = GenericApplicationContext().apply {
+			environment.addActiveProfile("barbar")
+			environment.addActiveProfile("baz")
+			environment.addActiveProfile("buz")
+			beans.initialize(this)
+			refresh()
+		}
+		context.getBean<Baz>()
+		context.getBean<BarBar>()
+		context.getBean<Bar>()
+
+		try {
+			context.getBean<Foo>()
+			fail("should have thrown an Exception")
+		} catch (ignored: Exception) {
+		}
+		try {
+			context.getBean<FooFoo>()
+			fail("should have thrown an Exception")
+		} catch (ignored: Exception) {
+		}
+	}
+
+	@Test
+	fun `Declare beans with ordering`() {
+		val beans = beans {
+			bean<FooFoo>(order = Ordered.LOWEST_PRECEDENCE) {
+				FooFoo("lowest")
+			}
+			bean<FooFoo>(order = Ordered.HIGHEST_PRECEDENCE) {
+				FooFoo("highest")
+			}
+		}
+
+		val context = GenericApplicationContext().apply {
+			beans.initialize(this)
+			refresh()
+		}
+
+		assertThat(context.getBeanProvider<FooFoo>().orderedStream().map { it.name }).containsExactly("highest", "lowest")
+	}
+
+	@Test
+	fun `Declare beans flag them as to be ignored by AOT if needed`() {
+		val beans = beans {
+			bean("one") { foo() }
+			bean<Bar>("two")
+		}
+
+		val context = GenericApplicationContext().apply {
+			beans.initialize(this)
+		}
+
+		assertThat(context.beanDefinitionNames).contains("one", "two")
+		assertThat(context.getBeanDefinition("one").getAttribute(
+			BeanRegistrationAotProcessor.IGNORE_REGISTRATION_ATTRIBUTE)).isEqualTo(true)
+		assertThat(context.getBeanDefinition("two").getAttribute(
+			BeanRegistrationAotProcessor.IGNORE_REGISTRATION_ATTRIBUTE)).isNull()
+	}
+
 }
 
 class Foo
@@ -179,3 +246,4 @@ class FooFoo(val name: String)
 class BarBar(val foos: Collection<Foo>)
 
 fun baz(bar: Bar) = Baz(bar)
+fun foo() = Foo()

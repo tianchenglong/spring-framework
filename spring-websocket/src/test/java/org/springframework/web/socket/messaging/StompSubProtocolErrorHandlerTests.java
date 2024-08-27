@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.web.socket.messaging;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -28,22 +29,23 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link StompSubProtocolErrorHandler}.
+ * Tests for {@link StompSubProtocolErrorHandler}.
+ *
  * @author Rossen Stoyanchev
  */
-public class StompSubProtocolErrorHandlerTests {
+class StompSubProtocolErrorHandlerTests {
 
 	private StompSubProtocolErrorHandler handler;
 
 
-	@Before
-	public void setUp() throws Exception {
+	@BeforeEach
+	void setUp() {
 		this.handler = new StompSubProtocolErrorHandler();
 	}
 
 
 	@Test
-	public void handleClientMessageProcessingError() throws Exception {
+	void handleClientMessageProcessingError() {
 
 		Exception ex = new Exception("fake exception");
 		Message<byte[]> actual = this.handler.handleClientMessageProcessingError(null, ex);
@@ -57,7 +59,7 @@ public class StompSubProtocolErrorHandlerTests {
 	}
 
 	@Test
-	public void handleClientMessageProcessingErrorWithReceipt() throws Exception {
+	void handleClientMessageProcessingErrorWithReceipt() {
 
 		String receiptId = "123";
 		StompHeaderAccessor clientHeaderAccessor = StompHeaderAccessor.create(StompCommand.SEND);

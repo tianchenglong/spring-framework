@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,10 @@
 
 package org.springframework.test.context.junit4;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.testng.ITestNGListener;
 import org.testng.TestNG;
 
 import org.springframework.test.context.ContextConfiguration;
@@ -36,6 +34,7 @@ import org.springframework.test.context.transaction.BeforeTransaction;
 import org.springframework.util.ClassUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Integration tests which verify that '<i>before</i>' and '<i>after</i>'
@@ -93,11 +92,10 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 
 	@Test
-	@Ignore("Fails against TestNG 6.11")
-	public void runTestAndAssertCounters() throws Exception {
+	public void runTestAndAssertCounters() {
 		TrackingTestNGTestListener listener = new TrackingTestNGTestListener();
 		TestNG testNG = new TestNG();
-		testNG.addListener((ITestNGListener) listener);
+		testNG.addListener(listener);
 		testNG.setTestClasses(new Class<?>[] {this.clazz});
 		testNG.setVerbose(0);
 		testNG.run();
@@ -115,7 +113,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void beforeTestClass(TestContext testContext) {
-			org.testng.Assert.fail("always failing beforeTestClass()");
+			fail("always failing beforeTestClass()");
 		}
 	}
 
@@ -123,7 +121,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void afterTestClass(TestContext testContext) {
-			org.testng.Assert.fail("always failing afterTestClass()");
+			fail("always failing afterTestClass()");
 		}
 	}
 
@@ -131,7 +129,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void prepareTestInstance(TestContext testContext) throws Exception {
-			org.testng.Assert.fail("always failing prepareTestInstance()");
+			fail("always failing prepareTestInstance()");
 		}
 	}
 
@@ -139,7 +137,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void beforeTestMethod(TestContext testContext) {
-			org.testng.Assert.fail("always failing beforeTestMethod()");
+			fail("always failing beforeTestMethod()");
 		}
 	}
 
@@ -147,7 +145,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void beforeTestExecution(TestContext testContext) {
-			org.testng.Assert.fail("always failing beforeTestExecution()");
+			fail("always failing beforeTestExecution()");
 		}
 	}
 
@@ -155,7 +153,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void afterTestExecution(TestContext testContext) {
-			org.testng.Assert.fail("always failing afterTestExecution()");
+			fail("always failing afterTestExecution()");
 		}
 	}
 
@@ -163,13 +161,13 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@Override
 		public void afterTestMethod(TestContext testContext) {
-			org.testng.Assert.fail("always failing afterTestMethod()");
+			fail("always failing afterTestMethod()");
 		}
 	}
 
 
 	@TestExecutionListeners(inheritListeners = false)
-	public static abstract class BaseTestCase extends AbstractTestNGSpringContextTests {
+	public abstract static class BaseTestCase extends AbstractTestNGSpringContextTests {
 
 		@org.testng.annotations.Test
 		public void testNothing() {
@@ -213,7 +211,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@BeforeTransaction
 		public void beforeTransaction() {
-			org.testng.Assert.fail("always failing beforeTransaction()");
+			fail("always failing beforeTransaction()");
 		}
 	}
 
@@ -226,7 +224,7 @@ public class FailingBeforeAndAfterMethodsTestNGTests {
 
 		@AfterTransaction
 		public void afterTransaction() {
-			org.testng.Assert.fail("always failing afterTransaction()");
+			fail("always failing afterTransaction()");
 		}
 	}
 

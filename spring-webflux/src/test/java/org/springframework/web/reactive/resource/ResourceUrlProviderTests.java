@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,28 +24,29 @@ import java.util.List;
 import java.util.Map;
 
 import org.assertj.core.api.Condition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.mock.web.test.MockServletContext;
-import org.springframework.mock.web.test.server.MockServerWebExchange;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.testfixture.server.MockServerWebExchange;
+import org.springframework.web.testfixture.servlet.MockServletContext;
 import org.springframework.web.util.pattern.PathPattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.mock.http.server.reactive.test.MockServerHttpRequest.get;
+import static org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest.get;
 
 /**
- * Unit tests for {@link ResourceUrlProvider}.
+ * Tests for {@link ResourceUrlProvider}.
  *
  * @author Rossen Stoyanchev
+ * @author Brian Clozel
  */
-public class ResourceUrlProviderTests {
+class ResourceUrlProviderTests {
 
 	private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
@@ -61,8 +62,8 @@ public class ResourceUrlProviderTests {
 	private final MockServerWebExchange exchange = MockServerWebExchange.from(get("/"));
 
 
-	@Before
-	public void setup() throws Exception {
+	@BeforeEach
+	void setup() throws Exception {
 		this.locations.add(new ClassPathResource("test/", getClass()));
 		this.locations.add(new ClassPathResource("testalternatepath/", getClass()));
 		this.handler.setLocations(this.locations);
@@ -73,7 +74,7 @@ public class ResourceUrlProviderTests {
 
 
 	@Test
-	public void getStaticResourceUrl() {
+	void getStaticResourceUrl() {
 		String expected = "/resources/foo.css";
 		String actual = this.urlProvider.getForUriString(expected, this.exchange).block(TIMEOUT);
 
@@ -81,7 +82,7 @@ public class ResourceUrlProviderTests {
 	}
 
 	@Test  // SPR-13374
-	public void getStaticResourceUrlRequestWithQueryOrHash() {
+	void getStaticResourceUrlRequestWithQueryOrHash() {
 
 		String url = "/resources/foo.css?foo=bar&url=https://example.org";
 		String resolvedUrl = this.urlProvider.getForUriString(url, this.exchange).block(TIMEOUT);
@@ -93,7 +94,7 @@ public class ResourceUrlProviderTests {
 	}
 
 	@Test
-	public void getVersionedResourceUrl() {
+	void getVersionedResourceUrl() {
 		VersionResourceResolver versionResolver = new VersionResourceResolver();
 		versionResolver.setStrategyMap(Collections.singletonMap("/**", new ContentVersionStrategy()));
 		List<ResourceResolver> resolvers = new ArrayList<>();
@@ -108,7 +109,7 @@ public class ResourceUrlProviderTests {
 	}
 
 	@Test  // SPR-12647
-	public void bestPatternMatch() {
+	void bestPatternMatch() {
 		ResourceWebHandler otherHandler = new ResourceWebHandler();
 		otherHandler.setLocations(this.locations);
 
@@ -128,8 +129,7 @@ public class ResourceUrlProviderTests {
 	}
 
 	@Test  // SPR-12592
-	@SuppressWarnings("resource")
-	public void initializeOnce() {
+	void initializeOnce() {
 		AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
 		context.setServletContext(new MockServletContext());
 		context.register(HandlerMappingConfiguration.class);
@@ -139,9 +139,31 @@ public class ResourceUrlProviderTests {
 				.hasKeySatisfying(pathPatternStringOf("/resources/**"));
 	}
 
+	@Test
+	void initializeOnCurrentContext() {
+		AnnotationConfigWebApplicationContext parentContext = new AnnotationConfigWebApplicationContext();
+		parentContext.setServletContext(new MockServletContext());
+		parentContext.register(ParentHandlerMappingConfiguration.class);
+
+		AnnotationConfigWebApplicationContext childContext = new AnnotationConfigWebApplicationContext();
+		childContext.setParent(parentContext);
+		childContext.setServletContext(new MockServletContext());
+		childContext.register(HandlerMappingConfiguration.class);
+
+		parentContext.refresh();
+		childContext.refresh();
+
+		ResourceUrlProvider parentUrlProvider = parentContext.getBean(ResourceUrlProvider.class);
+		assertThat(parentUrlProvider.getHandlerMap()).isEmpty();
+		ResourceUrlProvider childUrlProvider = childContext.getBean(ResourceUrlProvider.class);
+		assertThat(childUrlProvider.getHandlerMap()).hasKeySatisfying(pathPatternStringOf("/resources/**"));
+		childContext.close();
+		parentContext.close();
+	}
+
 
 	private Condition<PathPattern> pathPatternStringOf(String expected) {
-		return new Condition<PathPattern>(
+		return new Condition<>(
 				actual -> actual != null && actual.getPatternString().equals(expected),
 				"Pattern %s", expected);
 	}
@@ -152,13 +174,18 @@ public class ResourceUrlProviderTests {
 
 		@Bean
 		public SimpleUrlHandlerMapping simpleUrlHandlerMapping() {
-			ResourceWebHandler handler = new ResourceWebHandler();
-			HashMap<String, ResourceWebHandler> handlerMap = new HashMap<>();
-			handlerMap.put("/resources/**", handler);
-			SimpleUrlHandlerMapping hm = new SimpleUrlHandlerMapping();
-			hm.setUrlMap(handlerMap);
-			return hm;
+			return new SimpleUrlHandlerMapping(Collections.singletonMap("/resources/**", new ResourceWebHandler()));
 		}
+
+		@Bean
+		public ResourceUrlProvider resourceUrlProvider() {
+			return new ResourceUrlProvider();
+		}
+	}
+
+	@Configuration
+	@SuppressWarnings({"unused", "WeakerAccess"})
+	static class ParentHandlerMappingConfiguration {
 
 		@Bean
 		public ResourceUrlProvider resourceUrlProvider() {

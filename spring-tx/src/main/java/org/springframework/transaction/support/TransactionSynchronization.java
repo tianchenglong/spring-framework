@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.transaction.support;
 
 import java.io.Flushable;
 
+import org.springframework.core.Ordered;
+
 /**
  * Interface for transaction synchronization callbacks.
  * Supported by AbstractPlatformTransactionManager.
@@ -29,13 +31,18 @@ import java.io.Flushable;
  * <p>System synchronizations performed by Spring itself use specific order values,
  * allowing for fine-grained interaction with their execution order (if necessary).
  *
+ * <p>Implements the {@link Ordered} interface to enable the execution order of
+ * synchronizations to be controlled declaratively, as of 5.3. The default
+ * {@link #getOrder() order} is {@link Ordered#LOWEST_PRECEDENCE}, indicating
+ * late execution; return a lower value for earlier execution.
+ *
  * @author Juergen Hoeller
  * @since 02.06.2003
  * @see TransactionSynchronizationManager
  * @see AbstractPlatformTransactionManager
  * @see org.springframework.jdbc.datasource.DataSourceUtils#CONNECTION_SYNCHRONIZATION_ORDER
  */
-public interface TransactionSynchronization extends Flushable {
+public interface TransactionSynchronization extends Ordered, Flushable {
 
 	/** Completion status in case of proper commit. */
 	int STATUS_COMMITTED = 0;
@@ -46,6 +53,15 @@ public interface TransactionSynchronization extends Flushable {
 	/** Completion status in case of heuristic mixed completion or system errors. */
 	int STATUS_UNKNOWN = 2;
 
+
+	/**
+	 * Return the execution order for this transaction synchronization.
+	 * <p>Default is {@link Ordered#LOWEST_PRECEDENCE}.
+	 */
+	@Override
+	default int getOrder() {
+		return Ordered.LOWEST_PRECEDENCE;
+	}
 
 	/**
 	 * Suspend this synchronization.
@@ -70,6 +86,34 @@ public interface TransactionSynchronization extends Flushable {
 	 */
 	@Override
 	default void flush() {
+	}
+
+	/**
+	 * Invoked on creation of a new savepoint, either when a nested transaction
+	 * is started against an existing transaction or on a programmatic savepoint
+	 * via {@link org.springframework.transaction.TransactionStatus}.
+	 * <p>This synchronization callback is invoked right <i>after</i> the creation
+	 * of the resource savepoint, with the given savepoint object already active.
+	 * @param savepoint the associated savepoint object (primarily as a key for
+	 * identifying the savepoint but also castable to the resource savepoint type)
+	 * @since 6.2
+	 * @see org.springframework.transaction.SavepointManager#createSavepoint
+	 * @see org.springframework.transaction.TransactionDefinition#PROPAGATION_NESTED
+	 */
+	default void savepoint(Object savepoint) {
+	}
+
+	/**
+	 * Invoked in case of a rollback to the previously created savepoint.
+	 * <p>This synchronization callback is invoked right <i>before</i> the rollback
+	 * of the resource savepoint, with the given savepoint object still active.
+	 * @param savepoint the associated savepoint object (primarily as a key for
+	 * identifying the savepoint but also castable to the resource savepoint type)
+	 * @since 6.2
+	 * @see #savepoint
+	 * @see org.springframework.transaction.SavepointManager#rollbackToSavepoint
+	 */
+	default void savepointRollback(Object savepoint) {
 	}
 
 	/**

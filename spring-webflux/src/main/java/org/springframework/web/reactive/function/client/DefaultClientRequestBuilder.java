@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
@@ -63,6 +64,9 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
 	private BodyInserter<?, ? super ClientHttpRequest> body = BodyInserters.empty();
 
+	@Nullable
+	private Consumer<ClientHttpRequest> httpRequestConsumer;
+
 
 	public DefaultClientRequestBuilder(ClientRequest other) {
 		Assert.notNull(other, "ClientRequest must not be null");
@@ -72,6 +76,7 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 		cookies(cookies -> cookies.addAll(other.cookies()));
 		attributes(attributes -> attributes.putAll(other.attributes()));
 		body(other.body());
+		this.httpRequestConsumer = other.httpRequest();
 	}
 
 	public DefaultClientRequestBuilder(HttpMethod method, URI url) {
@@ -151,6 +156,13 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 	}
 
 	@Override
+	public ClientRequest.Builder httpRequest(Consumer<ClientHttpRequest> requestConsumer) {
+		this.httpRequestConsumer = (this.httpRequestConsumer != null ?
+				this.httpRequestConsumer.andThen(requestConsumer) : requestConsumer);
+		return this;
+	}
+
+	@Override
 	public ClientRequest.Builder body(BodyInserter<?, ? super ClientHttpRequest> inserter) {
 		this.body = inserter;
 		return this;
@@ -158,7 +170,9 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
 	@Override
 	public ClientRequest build() {
-		return new BodyInserterRequest(this.method, this.url, this.headers, this.cookies, this.body, this.attributes);
+		return new BodyInserterRequest(
+				this.method, this.url, this.headers, this.cookies, this.body,
+				this.attributes, this.httpRequestConsumer);
 	}
 
 
@@ -176,11 +190,14 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
 		private final Map<String, Object> attributes;
 
+		@Nullable
+		private final Consumer<ClientHttpRequest> httpRequestConsumer;
+
 		private final String logPrefix;
 
 		public BodyInserterRequest(HttpMethod method, URI url, HttpHeaders headers,
 				MultiValueMap<String, String> cookies, BodyInserter<?, ? super ClientHttpRequest> body,
-				Map<String, Object> attributes) {
+				Map<String, Object> attributes, @Nullable Consumer<ClientHttpRequest> httpRequestConsumer) {
 
 			this.method = method;
 			this.url = url;
@@ -188,6 +205,7 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 			this.cookies = CollectionUtils.unmodifiableMultiValueMap(cookies);
 			this.body = body;
 			this.attributes = Collections.unmodifiableMap(attributes);
+			this.httpRequestConsumer = httpRequestConsumer;
 
 			Object id = attributes.computeIfAbsent(LOG_ID_ATTRIBUTE, name -> ObjectUtils.getIdentityHexString(this));
 			this.logPrefix = "[" + id + "] ";
@@ -224,6 +242,12 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 		}
 
 		@Override
+		@Nullable
+		public Consumer<ClientHttpRequest> httpRequest() {
+			return this.httpRequestConsumer;
+		}
+
+		@Override
 		public String logPrefix() {
 			return this.logPrefix;
 		}
@@ -232,10 +256,7 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 		public Mono<Void> writeTo(ClientHttpRequest request, ExchangeStrategies strategies) {
 			HttpHeaders requestHeaders = request.getHeaders();
 			if (!this.headers.isEmpty()) {
-				this.headers.entrySet().stream()
-						.filter(entry -> !requestHeaders.containsKey(entry.getKey()))
-						.forEach(entry -> requestHeaders
-								.put(entry.getKey(), entry.getValue()));
+				this.headers.forEach(requestHeaders::putIfAbsent);
 			}
 
 			MultiValueMap<String, HttpCookie> requestCookies = request.getCookies();
@@ -244,6 +265,12 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 					HttpCookie cookie = new HttpCookie(name, value);
 					requestCookies.add(name, cookie);
 				}));
+			}
+
+			request.getAttributes().putAll(this.attributes);
+
+			if (this.httpRequestConsumer != null) {
+				this.httpRequestConsumer.accept(request);
 			}
 
 			return this.body.insert(request, new BodyInserter.Context() {

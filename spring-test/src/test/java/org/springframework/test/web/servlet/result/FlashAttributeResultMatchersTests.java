@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.test.web.servlet.result;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.test.web.servlet.StubMvcResult;
 import org.springframework.web.servlet.FlashMap;
@@ -34,7 +34,7 @@ public class FlashAttributeResultMatchersTests {
 	}
 
 	@Test
-	public void attributeExists_doesntExist() throws Exception {
+	public void attributeExists_DoesNotExist() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new FlashAttributeResultMatchers().attributeExists("bad").match(getStubMvcResult()));
 	}
@@ -45,7 +45,7 @@ public class FlashAttributeResultMatchersTests {
 	}
 
 	@Test
-	public void attribute_incorrectValue() throws Exception {
+	public void attribute_incorrectValue() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new FlashAttributeResultMatchers().attribute("good", "not good").match(getStubMvcResult()));
 	}
@@ -53,8 +53,7 @@ public class FlashAttributeResultMatchersTests {
 	private StubMvcResult getStubMvcResult() {
 		FlashMap flashMap = new FlashMap();
 		flashMap.put("good", "good");
-		StubMvcResult mvcResult = new StubMvcResult(null, null, null, null, null, flashMap, null);
-		return mvcResult;
+		return new StubMvcResult(null, null, null, null, null, flashMap, null);
 	}
 
 }

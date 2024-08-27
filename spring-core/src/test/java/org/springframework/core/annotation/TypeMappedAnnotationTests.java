@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,20 +24,20 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for {@link TypeMappedAnnotation}. See also
- * {@link MergedAnnotationsTests} for a much more extensive collection of tests.
+ * Tests for {@link TypeMappedAnnotation}. See also {@link MergedAnnotationsTests}
+ * for a much more extensive collection of tests.
  *
  * @author Phillip Webb
  */
-public class TypeMappedAnnotationTests {
+class TypeMappedAnnotationTests {
 
 	@Test
-	public void mappingWhenMirroredReturnsMirroredValues() {
+	void mappingWhenMirroredReturnsMirroredValues() {
 		testExplicitMirror(WithExplicitMirrorA.class);
 		testExplicitMirror(WithExplicitMirrorB.class);
 	}
@@ -50,7 +50,7 @@ public class TypeMappedAnnotationTests {
 	}
 
 	@Test
-	public void mappingExplicitAliasToMetaAnnotationReturnsMappedValues() {
+	void mappingExplicitAliasToMetaAnnotationReturnsMappedValues() {
 		TypeMappedAnnotation<?> annotation = getTypeMappedAnnotation(
 				WithExplicitAliasToMetaAnnotation.class,
 				ExplicitAliasToMetaAnnotation.class,
@@ -60,17 +60,17 @@ public class TypeMappedAnnotationTests {
 	}
 
 	@Test
-	public void mappingConventionAliasToMetaAnnotationReturnsMappedValues() {
+	void mappingConventionAliasToMetaAnnotationReturnsMappedValues() {
 		TypeMappedAnnotation<?> annotation = getTypeMappedAnnotation(
 				WithConventionAliasToMetaAnnotation.class,
 				ConventionAliasToMetaAnnotation.class,
 				ConventionAliasMetaAnnotationTarget.class);
-		assertThat(annotation.getString("value")).isEqualTo("");
+		assertThat(annotation.getString("value")).isEmpty();
 		assertThat(annotation.getString("convention")).isEqualTo("convention");
 	}
 
 	@Test
-	public void adaptFromEmptyArrayToAnyComponentType() {
+	void adaptFromEmptyArrayToAnyComponentType() {
 		AttributeMethods methods = AttributeMethods.forAnnotationType(ArrayTypes.class);
 		Map<String, Object> attributes = new HashMap<>();
 		for (int i = 0; i < methods.size(); i++) {
@@ -93,7 +93,7 @@ public class TypeMappedAnnotationTests {
 	}
 
 	@Test
-	public void adaptFromNestedMergedAnnotation() {
+	void adaptFromNestedMergedAnnotation() {
 		MergedAnnotation<Nested> nested = MergedAnnotation.of(Nested.class);
 		MergedAnnotation<?> annotation = TypeMappedAnnotation.of(null, null,
 				NestedContainer.class, Collections.singletonMap("value", nested));
@@ -101,7 +101,7 @@ public class TypeMappedAnnotationTests {
 	}
 
 	@Test
-	public void adaptFromStringToClass() {
+	void adaptFromStringToClass() {
 		MergedAnnotation<?> annotation = TypeMappedAnnotation.of(null, null,
 				ClassAttributes.class,
 				Collections.singletonMap("classValue", InputStream.class.getName()));
@@ -110,7 +110,7 @@ public class TypeMappedAnnotationTests {
 	}
 
 	@Test
-	public void adaptFromStringArrayToClassArray() {
+	void adaptFromStringArrayToClassArray() {
 		MergedAnnotation<?> annotation = TypeMappedAnnotation.of(null, null, ClassAttributes.class,
 				Collections.singletonMap("classArrayValue", new String[] { InputStream.class.getName() }));
 		assertThat(annotation.getStringArray("classArrayValue")).containsExactly(InputStream.class.getName());
@@ -132,8 +132,7 @@ public class TypeMappedAnnotationTests {
 
 	private AnnotationTypeMapping getMapping(Annotation annotation,
 			Class<? extends Annotation> mappedAnnotationType) {
-		AnnotationTypeMappings mappings = AnnotationTypeMappings.forAnnotationType(
-				annotation.annotationType());
+		AnnotationTypeMappings mappings = AnnotationTypeMappings.forAnnotationType(annotation.annotationType());
 		for (int i = 0; i < mappings.size(); i++) {
 			AnnotationTypeMapping candidate = mappings.get(i);
 			if (candidate.getAnnotationType().equals(mappedAnnotationType)) {
@@ -145,75 +144,68 @@ public class TypeMappedAnnotationTests {
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ExplicitMirror {
+	@interface ExplicitMirror {
 
 		@AliasFor("b")
 		String a() default "";
 
 		@AliasFor("a")
 		String b() default "";
-
 	}
 
 	@ExplicitMirror(a = "test")
 	static class WithExplicitMirrorA {
-
 	}
 
 	@ExplicitMirror(b = "test")
 	static class WithExplicitMirrorB {
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@ExplicitAliasMetaAnnotationTarget(nonAliased = "nonAliased")
-	static @interface ExplicitAliasToMetaAnnotation {
+	@interface ExplicitAliasToMetaAnnotation {
 
 		@AliasFor(annotation = ExplicitAliasMetaAnnotationTarget.class)
 		String aliased() default "";
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ExplicitAliasMetaAnnotationTarget {
+	@interface ExplicitAliasMetaAnnotationTarget {
 
 		String aliased() default "";
 
 		String nonAliased() default "";
-
 	}
 
 	@ExplicitAliasToMetaAnnotation(aliased = "aliased")
 	private static class WithExplicitAliasToMetaAnnotation {
+	}
 
+	@Retention(RetentionPolicy.RUNTIME)
+	@interface ConventionAliasMetaAnnotationTarget {
+
+		String value() default "";
+
+		String convention() default "";
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@ConventionAliasMetaAnnotationTarget
-	static @interface ConventionAliasToMetaAnnotation {
+	@interface ConventionAliasToMetaAnnotation {
 
 		String value() default "";
 
+		// Do NOT use @AliasFor here until Spring 6.1
+		// @AliasFor(annotation = ConventionAliasMetaAnnotationTarget.class)
 		String convention() default "";
-
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ConventionAliasMetaAnnotationTarget {
-
-		String value() default "";
-
-		String convention() default "";
-
 	}
 
 	@ConventionAliasToMetaAnnotation(value = "value", convention = "convention")
 	private static class WithConventionAliasToMetaAnnotation {
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ArrayTypes {
+	@interface ArrayTypes {
 
 		String[] stringValue();
 
@@ -238,32 +230,30 @@ public class TypeMappedAnnotationTests {
 		ExplicitMirror[] annotationValue();
 
 		ExampleEnum[] enumValue();
-
 	}
 
-	enum ExampleEnum {ONE,TWO,THREE}
+	enum ExampleEnum {
+		ONE, TWO, THREE
+	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface NestedContainer {
+	@interface NestedContainer {
 
 		Nested value();
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface Nested {
+	@interface Nested {
 
 		String value() default "";
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ClassAttributes {
+	@interface ClassAttributes {
 
 		Class<?> classValue();
 
 		Class<?>[] classArrayValue();
-
 	}
 
 }

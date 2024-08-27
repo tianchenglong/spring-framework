@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,21 @@
 
 package org.springframework.web.reactive.result.method.annotation;
 
-import java.io.File;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.time.Duration;
+import java.util.Objects;
+import java.util.stream.Stream;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.MonoProcessor;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -32,15 +38,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.HttpComponentsClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.ServerSentEvent;
-import org.springframework.http.server.reactive.AbstractHttpHandlerIntegrationTests;
 import org.springframework.http.server.reactive.HttpHandler;
-import org.springframework.http.server.reactive.bootstrap.JettyHttpServer;
-import org.springframework.http.server.reactive.bootstrap.ReactorHttpServer;
-import org.springframework.http.server.reactive.bootstrap.TomcatHttpServer;
-import org.springframework.http.server.reactive.bootstrap.UndertowHttpServer;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,61 +51,51 @@ import org.springframework.web.reactive.DispatcherHandler;
 import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.AbstractHttpHandlerIntegrationTests;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.JettyCoreHttpServer;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.JettyHttpServer;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.ReactorHttpServer;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.TomcatHttpServer;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.UndertowHttpServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Named.named;
 import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
 
 /**
  * @author Sebastien Deleuze
+ * @author Sam Brannen
  */
-public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
+class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
 	private AnnotationConfigApplicationContext wac;
 
 	private WebClient webClient;
 
-	@Parameterized.Parameter(1)
-	public ClientHttpConnector connector;
 
-	@Parameterized.Parameters(name = "server [{0}] webClient [{1}]")
-	public static Object[][] arguments() {
-		File base = new File(System.getProperty("java.io.tmpdir"));
-		return new Object[][] {
-				{new JettyHttpServer(), new ReactorClientHttpConnector()},
-				{new JettyHttpServer(), new JettyClientHttpConnector()},
-				{new ReactorHttpServer(), new ReactorClientHttpConnector()},
-				{new ReactorHttpServer(), new JettyClientHttpConnector()},
-				{new TomcatHttpServer(base.getAbsolutePath()), new ReactorClientHttpConnector()},
-				{new TomcatHttpServer(base.getAbsolutePath()), new JettyClientHttpConnector()},
-				{new UndertowHttpServer(), new ReactorClientHttpConnector()},
-				{new UndertowHttpServer(), new JettyClientHttpConnector()}
-		};
-	}
+	private void startServer(HttpServer httpServer, ClientHttpConnector connector) throws Exception {
+		super.startServer(httpServer);
 
-
-	@Override
-	@Before
-	public void setup() throws Exception {
-		super.setup();
 		this.webClient = WebClient
 				.builder()
-				.clientConnector(this.connector)
+				.clientConnector(connector)
 				.baseUrl("http://localhost:" + this.port + "/sse")
 				.build();
 	}
 
 	@Override
 	protected HttpHandler createHttpHandler() {
-		this.wac = new AnnotationConfigApplicationContext();
-		this.wac.register(TestConfiguration.class);
-		this.wac.refresh();
+		this.wac = new AnnotationConfigApplicationContext(TestConfiguration.class);
 
 		return WebHttpHandlerBuilder.webHandler(new DispatcherHandler(this.wac)).build();
 	}
 
-	@Test
-	public void sseAsString() {
+	@ParameterizedSseTest
+	void sseAsString(HttpServer httpServer, ClientHttpConnector connector) throws Exception {
+		startServer(httpServer, connector);
+
 		Flux<String> result = this.webClient.get()
 				.uri("/string")
 				.accept(TEXT_EVENT_STREAM)
@@ -116,8 +109,10 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 				.verify(Duration.ofSeconds(5L));
 	}
 
-	@Test
-	public void sseAsPerson() {
+	@ParameterizedSseTest
+	void sseAsPerson(HttpServer httpServer, ClientHttpConnector connector) throws Exception {
+		startServer(httpServer, connector);
+
 		Flux<Person> result = this.webClient.get()
 				.uri("/person")
 				.accept(TEXT_EVENT_STREAM)
@@ -131,27 +126,30 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 				.verify(Duration.ofSeconds(5L));
 	}
 
-	@Test
-	public void sseAsEvent() {
+	@ParameterizedSseTest
+	void sseAsEvent(HttpServer httpServer, ClientHttpConnector connector) throws Exception {
+		assumeTrue(httpServer instanceof JettyHttpServer || httpServer instanceof JettyCoreHttpServer);
 
-		assumeTrue(server instanceof JettyHttpServer);
+		startServer(httpServer, connector);
 
 		Flux<ServerSentEvent<Person>> result = this.webClient.get()
 				.uri("/event")
 				.accept(TEXT_EVENT_STREAM)
 				.retrieve()
-				.bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<Person>>() {});
+				.bodyToFlux(new ParameterizedTypeReference<>() {});
 
 		verifyPersonEvents(result);
 	}
 
-	@Test
-	public void sseAsEventWithoutAcceptHeader() {
+	@ParameterizedSseTest
+	void sseAsEventWithoutAcceptHeader(HttpServer httpServer, ClientHttpConnector connector) throws Exception {
+		startServer(httpServer, connector);
+
 		Flux<ServerSentEvent<Person>> result = this.webClient.get()
 				.uri("/event")
 				.accept(TEXT_EVENT_STREAM)
 				.retrieve()
-				.bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<Person>>() {});
+				.bodyToFlux(new ParameterizedTypeReference<>() {});
 
 		verifyPersonEvents(result);
 	}
@@ -176,11 +174,12 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 				.verify(Duration.ofSeconds(5L));
 	}
 
-	@Test // SPR-16494
-	@Ignore // https://github.com/reactor/reactor-netty/issues/283
-	public void serverDetectsClientDisconnect() {
+	@ParameterizedSseTest // SPR-16494
+	@Disabled // https://github.com/reactor/reactor-netty/issues/283
+	void serverDetectsClientDisconnect(HttpServer httpServer, ClientHttpConnector connector) throws Exception {
+		assumeTrue(httpServer instanceof ReactorHttpServer);
 
-		assumeTrue(this.server instanceof ReactorHttpServer);
+		startServer(httpServer, connector);
 
 		Flux<String> result = this.webClient.get()
 				.uri("/infinite")
@@ -206,7 +205,9 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
 		private static final Flux<Long> INTERVAL = testInterval(Duration.ofMillis(100), 50);
 
-		private MonoProcessor<Void> cancellation = MonoProcessor.create();
+		private final Sinks.Empty<Void> cancelSink = Sinks.empty();
+
+		private Mono<Void> cancellation = cancelSink.asMono();
 
 
 		@GetMapping("/string")
@@ -232,7 +233,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		Flux<String> infinite() {
 			return Flux.just(0, 1).map(l -> "foo " + l)
 					.mergeWith(Flux.never())
-					.doOnCancel(() -> cancellation.onComplete());
+					.doOnCancel(() -> cancelSink.emitEmpty(Sinks.EmitFailureHandler.FAIL_FAST));
 		}
 	}
 
@@ -270,7 +271,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		}
 
 		@Override
-		public boolean equals(Object o) {
+		public boolean equals(@Nullable Object o) {
 			if (this == o) {
 				return true;
 			}
@@ -278,7 +279,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 				return false;
 			}
 			Person person = (Person) o;
-			return !(this.name != null ? !this.name.equals(person.name) : person.name != null);
+			return Objects.equals(this.name, person.name);
 		}
 
 		@Override
@@ -290,6 +291,40 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		public String toString() {
 			return "Person{name='" + this.name + '\'' + '}';
 		}
+	}
+
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	@ParameterizedTest(name = "[{index}] server = {0}, webClient = {1}")
+	@MethodSource("arguments")
+	private @interface ParameterizedSseTest {
+	}
+
+	static Stream<Arguments> arguments() {
+		return Stream.of(
+				args(new JettyHttpServer(), new ReactorClientHttpConnector()),
+				args(new JettyHttpServer(), new JettyClientHttpConnector()),
+				args(new JettyHttpServer(), new HttpComponentsClientHttpConnector()),
+				args(new JettyCoreHttpServer(), new ReactorClientHttpConnector()),
+				args(new JettyCoreHttpServer(), new JettyClientHttpConnector()),
+				args(new JettyCoreHttpServer(), new HttpComponentsClientHttpConnector()),
+				args(new ReactorHttpServer(), new ReactorClientHttpConnector()),
+				args(new ReactorHttpServer(), new JettyClientHttpConnector()),
+				args(new ReactorHttpServer(), new HttpComponentsClientHttpConnector()),
+				args(new TomcatHttpServer(), new ReactorClientHttpConnector()),
+				args(new TomcatHttpServer(), new JettyClientHttpConnector()),
+				args(new TomcatHttpServer(), new HttpComponentsClientHttpConnector()),
+				args(new UndertowHttpServer(), new ReactorClientHttpConnector()),
+				args(new UndertowHttpServer(), new JettyClientHttpConnector()),
+				args(new UndertowHttpServer(), new HttpComponentsClientHttpConnector())
+		);
+	}
+
+	private static Arguments args(HttpServer httpServer, ClientHttpConnector connector) {
+		return Arguments.of(
+				named(httpServer.getClass().getSimpleName(), httpServer),
+				named(connector.getClass().getSimpleName(), connector));
 	}
 
 }

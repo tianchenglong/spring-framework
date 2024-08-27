@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.cache.jcache.interceptor;
 
 import java.lang.annotation.Annotation;
+
 import javax.cache.annotation.CacheInvocationParameter;
 import javax.cache.annotation.CacheKeyInvocationContext;
 
@@ -41,8 +42,8 @@ class DefaultCacheKeyInvocationContext<A extends Annotation> extends DefaultCach
 	public DefaultCacheKeyInvocationContext(AbstractJCacheKeyOperation<A> operation, Object target, Object[] args) {
 		super(operation, target, args);
 		this.keyParameters = operation.getKeyParameters(args);
-		if (operation instanceof CachePutOperation) {
-			this.valueParameter = ((CachePutOperation) operation).getValueParameter(args);
+		if (operation instanceof CachePutOperation cachePutOperation) {
+			this.valueParameter = cachePutOperation.getValueParameter(args);
 		}
 		else {
 			this.valueParameter = null;

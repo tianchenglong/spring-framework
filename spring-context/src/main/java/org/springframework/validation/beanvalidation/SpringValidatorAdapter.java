@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,26 +18,28 @@ package org.springframework.validation.beanvalidation;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import javax.validation.ConstraintViolation;
-import javax.validation.ElementKind;
-import javax.validation.Path;
-import javax.validation.ValidationException;
-import javax.validation.executable.ExecutableValidator;
-import javax.validation.metadata.BeanDescriptor;
-import javax.validation.metadata.ConstraintDescriptor;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ElementKind;
+import jakarta.validation.Path;
+import jakarta.validation.ValidationException;
+import jakarta.validation.executable.ExecutableValidator;
+import jakarta.validation.metadata.BeanDescriptor;
+import jakarta.validation.metadata.ConstraintDescriptor;
+
+import org.springframework.beans.InvalidPropertyException;
 import org.springframework.beans.NotReadablePropertyException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
@@ -53,34 +55,29 @@ import org.springframework.validation.SmartValidator;
  * {@link CustomValidatorBean} and {@link LocalValidatorFactoryBean},
  * and as the primary implementation of the {@link SmartValidator} interface.
  *
- * <p>As of Spring Framework 5.0, this adapter is fully compatible with
- * Bean Validation 1.1 as well as 2.0.
+ * <p>This adapter is fully compatible with Bean Validation 1.1 as well as 2.0.
  *
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 3.0
  * @see SmartValidator
  * @see CustomValidatorBean
  * @see LocalValidatorFactoryBean
  */
-public class SpringValidatorAdapter implements SmartValidator, javax.validation.Validator {
+public class SpringValidatorAdapter implements SmartValidator, jakarta.validation.Validator {
 
-	private static final Set<String> internalAnnotationAttributes = new HashSet<>(4);
+	private static final Set<String> internalAnnotationAttributes = Set.of("message", "groups", "payload");
 
-	static {
-		internalAnnotationAttributes.add("message");
-		internalAnnotationAttributes.add("groups");
-		internalAnnotationAttributes.add("payload");
-	}
 
 	@Nullable
-	private javax.validation.Validator targetValidator;
+	private jakarta.validation.Validator targetValidator;
 
 
 	/**
 	 * Create a new SpringValidatorAdapter for the given JSR-303 Validator.
 	 * @param targetValidator the JSR-303 Validator to wrap
 	 */
-	public SpringValidatorAdapter(javax.validation.Validator targetValidator) {
+	public SpringValidatorAdapter(jakarta.validation.Validator targetValidator) {
 		Assert.notNull(targetValidator, "Target Validator must not be null");
 		this.targetValidator = targetValidator;
 	}
@@ -88,7 +85,7 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	SpringValidatorAdapter() {
 	}
 
-	void setTargetValidator(javax.validation.Validator targetValidator) {
+	void setTargetValidator(jakarta.validation.Validator targetValidator) {
 		this.targetValidator = targetValidator;
 	}
 
@@ -117,7 +114,7 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	@Override
 	public void validateValue(
 			Class<?> targetType, String fieldName, @Nullable Object value, Errors errors, Object... validationHints) {
@@ -135,8 +132,8 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	private Class<?>[] asValidationGroups(Object... validationHints) {
 		Set<Class<?>> groups = new LinkedHashSet<>(4);
 		for (Object hint : validationHints) {
-			if (hint instanceof Class) {
-				groups.add((Class<?>) hint);
+			if (hint instanceof Class<?> clazz) {
+				groups.add(clazz);
 			}
 		}
 		return ClassUtils.toClassArray(groups);
@@ -158,39 +155,26 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 					ConstraintDescriptor<?> cd = violation.getConstraintDescriptor();
 					String errorCode = determineErrorCode(cd);
 					Object[] errorArgs = getArgumentsForConstraint(errors.getObjectName(), field, cd);
-					if (errors instanceof BindingResult) {
+					if (errors instanceof BindingResult bindingResult) {
 						// Can do custom FieldError registration with invalid value from ConstraintViolation,
 						// as necessary for Hibernate Validator compatibility (non-indexed set path in field)
-						BindingResult bindingResult = (BindingResult) errors;
 						String nestedField = bindingResult.getNestedPath() + field;
 						if (nestedField.isEmpty()) {
 							String[] errorCodes = bindingResult.resolveMessageCodes(errorCode);
-							ObjectError error = new ObjectError(
-									errors.getObjectName(), errorCodes, errorArgs, violation.getMessage()) {
-								@Override
-								public boolean shouldRenderDefaultMessage() {
-									return requiresMessageFormat(violation);
-								}
-							};
-							error.wrap(violation);
+							ObjectError error = new ViolationObjectError(
+									errors.getObjectName(), errorCodes, errorArgs, violation, this);
 							bindingResult.addError(error);
 						}
 						else {
 							Object rejectedValue = getRejectedValue(field, violation, bindingResult);
 							String[] errorCodes = bindingResult.resolveMessageCodes(errorCode, field);
-							FieldError error = new FieldError(errors.getObjectName(), nestedField,
-									rejectedValue, false, errorCodes, errorArgs, violation.getMessage()) {
-								@Override
-								public boolean shouldRenderDefaultMessage() {
-									return requiresMessageFormat(violation);
-								}
-							};
-							error.wrap(violation);
+							FieldError error = new ViolationFieldError(errors.getObjectName(), nestedField,
+									rejectedValue, errorCodes, errorArgs, violation, this);
 							bindingResult.addError(error);
 						}
 					}
 					else {
-						// got no BindingResult - can only do standard rejectValue call
+						// Got no BindingResult - can only do standard rejectValue call
 						// with automatic extraction of the current field value
 						errors.rejectValue(field, errorCode, errorArgs, violation.getMessage());
 					}
@@ -210,7 +194,7 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	 * @param violation the current JSR-303 ConstraintViolation
 	 * @return the Spring-reported field (for use with {@link Errors})
 	 * @since 4.2
-	 * @see javax.validation.ConstraintViolation#getPropertyPath()
+	 * @see jakarta.validation.ConstraintViolation#getPropertyPath()
 	 * @see org.springframework.validation.FieldError#getField()
 	 */
 	protected String determineField(ConstraintViolation<Object> violation) {
@@ -218,7 +202,7 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
 		for (Path.Node node : path) {
-			if (node.isInIterable()) {
+			if (node.isInIterable() && !first) {
 				sb.append('[');
 				Object index = node.getIndex();
 				if (index == null) {
@@ -250,7 +234,7 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	 * @param descriptor the JSR-303 ConstraintDescriptor for the current violation
 	 * @return a corresponding error code (for use with {@link Errors})
 	 * @since 4.2
-	 * @see javax.validation.metadata.ConstraintDescriptor#getAnnotation()
+	 * @see jakarta.validation.metadata.ConstraintDescriptor#getAnnotation()
 	 * @see org.springframework.validation.MessageCodesResolver
 	 */
 	protected String determineErrorCode(ConstraintDescriptor<?> descriptor) {
@@ -280,8 +264,8 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 		Map<String, Object> attributesToExpose = new TreeMap<>();
 		descriptor.getAttributes().forEach((attributeName, attributeValue) -> {
 			if (!internalAnnotationAttributes.contains(attributeName)) {
-				if (attributeValue instanceof String) {
-					attributeValue = new ResolvableAttribute(attributeValue.toString());
+				if (attributeValue instanceof String str) {
+					attributeValue = new ResolvableAttribute(str);
 				}
 				attributesToExpose.put(attributeName, attributeValue);
 			}
@@ -303,8 +287,40 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	 * @see #getArgumentsForConstraint
 	 */
 	protected MessageSourceResolvable getResolvableField(String objectName, String field) {
-		String[] codes = new String[] {objectName + Errors.NESTED_PATH_SEPARATOR + field, field};
+		String[] codes = (StringUtils.hasText(field) ?
+				new String[] {objectName + Errors.NESTED_PATH_SEPARATOR + field, field} :
+				new String[] {objectName});
 		return new DefaultMessageSourceResolvable(codes, field);
+	}
+
+	/**
+	 * Extract the rejected value behind the given constraint violation,
+	 * for exposure through the Spring errors representation.
+	 * @param field the field that caused the binding error
+	 * @param violation the corresponding JSR-303 ConstraintViolation
+	 * @param bindingResult a Spring BindingResult for the backing object
+	 * which contains the current field's value
+	 * @return the invalid value to expose as part of the field error
+	 * @since 4.2
+	 * @see jakarta.validation.ConstraintViolation#getInvalidValue()
+	 * @see org.springframework.validation.FieldError#getRejectedValue()
+	 */
+	@Nullable
+	protected Object getRejectedValue(String field, ConstraintViolation<Object> violation, BindingResult bindingResult) {
+		Object invalidValue = violation.getInvalidValue();
+		if (!field.isEmpty() && !field.contains("[]") &&
+				(invalidValue == violation.getLeafBean() || field.contains("[") || field.contains("."))) {
+			// Possibly a bean constraint with property path: retrieve the actual property value.
+			// However, explicitly avoid this for "address[]" style paths that we can't handle.
+			try {
+				invalidValue = bindingResult.getRawFieldValue(field);
+			}
+			catch (InvalidPropertyException ex) {
+				// Bean validation uses ValueExtractor's to unwrap container values
+				// in which cases we can't access the raw value.
+			}
+		}
+		return invalidValue;
 	}
 
 	/**
@@ -327,31 +343,11 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	 * @see #getArgumentsForConstraint
 	 */
 	protected boolean requiresMessageFormat(ConstraintViolation<?> violation) {
-		return violation.getMessage().contains("{0}");
+		return containsSpringStylePlaceholder(violation.getMessage());
 	}
 
-	/**
-	 * Extract the rejected value behind the given constraint violation,
-	 * for exposure through the Spring errors representation.
-	 * @param field the field that caused the binding error
-	 * @param violation the corresponding JSR-303 ConstraintViolation
-	 * @param bindingResult a Spring BindingResult for the backing object
-	 * which contains the current field's value
-	 * @return the invalid value to expose as part of the field error
-	 * @since 4.2
-	 * @see javax.validation.ConstraintViolation#getInvalidValue()
-	 * @see org.springframework.validation.FieldError#getRejectedValue()
-	 */
-	@Nullable
-	protected Object getRejectedValue(String field, ConstraintViolation<Object> violation, BindingResult bindingResult) {
-		Object invalidValue = violation.getInvalidValue();
-		if (!"".equals(field) && !field.contains("[]") &&
-				(invalidValue == violation.getLeafBean() || field.contains("[") || field.contains("."))) {
-			// Possibly a bean constraint with property path: retrieve the actual property value.
-			// However, explicitly avoid this for "address[]" style paths that we can't handle.
-			invalidValue = bindingResult.getRawFieldValue(field);
-		}
-		return invalidValue;
+	private static boolean containsSpringStylePlaceholder(@Nullable String message) {
+		return (message != null && message.contains("{0}"));
 	}
 
 
@@ -393,8 +389,8 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 			return (type != null ? this.targetValidator.unwrap(type) : (T) this.targetValidator);
 		}
 		catch (ValidationException ex) {
-			// ignore if just being asked for plain Validator
-			if (javax.validation.Validator.class == type) {
+			// Ignore if just being asked for plain JSR-303 Validator
+			if (jakarta.validation.Validator.class == type) {
 				return (T) this.targetValidator;
 			}
 			throw ex;
@@ -435,6 +431,71 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 		@Override
 		public String getDefaultMessage() {
 			return this.resolvableString;
+		}
+
+		@Override
+		public String toString() {
+			return this.resolvableString;
+		}
+	}
+
+
+	/**
+	 * Subclass of {@code ObjectError} with Spring-style default message rendering.
+	 */
+	@SuppressWarnings("serial")
+	private static class ViolationObjectError extends ObjectError implements Serializable {
+
+		@Nullable
+		private transient SpringValidatorAdapter adapter;
+
+		@Nullable
+		private transient ConstraintViolation<?> violation;
+
+		public ViolationObjectError(String objectName, String[] codes, Object[] arguments,
+				ConstraintViolation<?> violation, SpringValidatorAdapter adapter) {
+
+			super(objectName, codes, arguments, violation.getMessage());
+			this.adapter = adapter;
+			this.violation = violation;
+			wrap(violation);
+		}
+
+		@Override
+		public boolean shouldRenderDefaultMessage() {
+			return (this.adapter != null && this.violation != null ?
+					this.adapter.requiresMessageFormat(this.violation) :
+					containsSpringStylePlaceholder(getDefaultMessage()));
+		}
+	}
+
+
+	/**
+	 * Subclass of {@code FieldError} with Spring-style default message rendering.
+	 */
+	@SuppressWarnings("serial")
+	private static class ViolationFieldError extends FieldError implements Serializable {
+
+		@Nullable
+		private transient SpringValidatorAdapter adapter;
+
+		@Nullable
+		private transient ConstraintViolation<?> violation;
+
+		public ViolationFieldError(String objectName, String field, @Nullable Object rejectedValue, String[] codes,
+				Object[] arguments, ConstraintViolation<?> violation, SpringValidatorAdapter adapter) {
+
+			super(objectName, field, rejectedValue, false, codes, arguments, violation.getMessage());
+			this.adapter = adapter;
+			this.violation = violation;
+			wrap(violation);
+		}
+
+		@Override
+		public boolean shouldRenderDefaultMessage() {
+			return (this.adapter != null && this.violation != null ?
+					this.adapter.requiresMessageFormat(this.violation) :
+					containsSpringStylePlaceholder(getDefaultMessage()));
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.codec.json.Jackson2CodecSupport;
@@ -64,12 +64,36 @@ public interface EntityResponse<T> extends ServerResponse {
 
 	/**
 	 * Create a builder with the given object.
-	 * @param t the object that represents the body of the response
-	 * @param <T> the type of the elements contained in the publisher
+	 * @param body the object that represents the body of the response
+	 * @param <T> the type of the body
 	 * @return the created builder
 	 */
-	static <T> Builder<T> fromObject(T t) {
-		return new DefaultEntityResponseBuilder<>(t, BodyInserters.fromObject(t));
+	static <T> Builder<T> fromObject(T body) {
+		return new DefaultEntityResponseBuilder<>(body, BodyInserters.fromValue(body));
+	}
+
+	/**
+	 * Create a builder with the given producer.
+	 * @param producer the producer that represents the body of the response
+	 * @param elementClass the class of elements contained in the publisher
+	 * @return the created builder
+	 * @since 5.2
+	 */
+	static <T> Builder<T> fromProducer(T producer, Class<?> elementClass) {
+		return new DefaultEntityResponseBuilder<>(producer,
+				BodyInserters.fromProducer(producer, elementClass));
+	}
+
+	/**
+	 * Create a builder with the given producer.
+	 * @param producer the producer that represents the body of the response
+	 * @param typeReference the type of elements contained in the producer
+	 * @return the created builder
+	 * @since 5.2
+	 */
+	static <T> Builder<T> fromProducer(T producer, ParameterizedTypeReference<?> typeReference) {
+		return new DefaultEntityResponseBuilder<>(producer,
+				BodyInserters.fromProducer(producer, typeReference));
 	}
 
 	/**
@@ -126,11 +150,23 @@ public interface EntityResponse<T> extends ServerResponse {
 		Builder<T> headers(HttpHeaders headers);
 
 		/**
+		 * Manipulate this entity's headers with the given consumer. The
+		 * headers provided to the consumer are "live", so that the consumer can be used to
+		 * {@linkplain HttpHeaders#set(String, String) overwrite} existing header values,
+		 * {@linkplain HttpHeaders#remove(Object) remove} values, or use any of the other
+		 * {@link HttpHeaders} methods.
+		 * @param headersConsumer a function that consumes the {@code HttpHeaders}
+		 * @return this builder
+		 * @since 6.1
+		 */
+		Builder<T> headers(Consumer<HttpHeaders> headersConsumer);
+
+		/**
 		 * Set the HTTP status.
 		 * @param status the response status
 		 * @return this builder
 		 */
-		Builder<T> status(HttpStatus status);
+		Builder<T> status(HttpStatusCode status);
 
 		/**
 		 * Set the HTTP status.

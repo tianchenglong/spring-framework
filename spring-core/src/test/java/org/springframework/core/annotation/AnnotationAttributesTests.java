@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.annotation.AnnotationUtilsTests.ImplicitAliasesContextConfig;
 
@@ -29,20 +29,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * Unit tests for {@link AnnotationAttributes}.
+ * Tests for {@link AnnotationAttributes}.
  *
  * @author Chris Beams
  * @author Sam Brannen
  * @author Juergen Hoeller
  * @since 3.1.1
  */
-public class AnnotationAttributesTests {
+class AnnotationAttributesTests {
 
 	private AnnotationAttributes attributes = new AnnotationAttributes();
 
 
 	@Test
-	public void typeSafeAttributeAccess() {
+	void typeSafeAttributeAccess() {
 		AnnotationAttributes nestedAttributes = new AnnotationAttributes();
 		nestedAttributes.put("value", 10);
 		nestedAttributes.put("name", "algernon");
@@ -60,8 +60,8 @@ public class AnnotationAttributesTests {
 
 		assertThat(attributes.getString("name")).isEqualTo("dave");
 		assertThat(attributes.getStringArray("names")).isEqualTo(new String[] {"dave", "frank", "hal"});
-		assertThat(attributes.getBoolean("bool1")).isEqualTo(true);
-		assertThat(attributes.getBoolean("bool2")).isEqualTo(false);
+		assertThat(attributes.getBoolean("bool1")).isTrue();
+		assertThat(attributes.getBoolean("bool2")).isFalse();
 		assertThat(attributes.<Color>getEnum("color")).isEqualTo(Color.RED);
 		assertThat(attributes.getClass("class").equals(Integer.class)).isTrue();
 		assertThat(attributes.getClassArray("classes")).isEqualTo(new Class<?>[] {Number.class, Short.class, Integer.class});
@@ -72,15 +72,25 @@ public class AnnotationAttributesTests {
 	}
 
 	@Test
-	public void unresolvableClass() throws Exception {
+	void unresolvableClassWithClassNotFoundException() {
 		attributes.put("unresolvableClass", new ClassNotFoundException("myclass"));
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				attributes.getClass("unresolvableClass"))
-			.withMessageContaining("myclass");
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> attributes.getClass("unresolvableClass"))
+			.withMessageContaining("myclass")
+			.withCauseInstanceOf(ClassNotFoundException.class);
 	}
 
 	@Test
-	public void singleElementToSingleElementArrayConversionSupport() throws Exception {
+	void unresolvableClassWithLinkageError() {
+		attributes.put("unresolvableClass", new LinkageError("myclass"));
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> attributes.getClass("unresolvableClass"))
+			.withMessageContaining("myclass")
+			.withCauseInstanceOf(LinkageError.class);
+	}
+
+	@Test
+	void singleElementToSingleElementArrayConversionSupport() {
 		Filter filter = FilteredClass.class.getAnnotation(Filter.class);
 
 		AnnotationAttributes nestedAttributes = new AnnotationAttributes();
@@ -98,17 +108,17 @@ public class AnnotationAttributesTests {
 
 		AnnotationAttributes[] array = attributes.getAnnotationArray("nestedAttributes");
 		assertThat(array).isNotNull();
-		assertThat(array.length).isEqualTo(1);
+		assertThat(array).hasSize(1);
 		assertThat(array[0].getString("name")).isEqualTo("Dilbert");
 
 		Filter[] filters = attributes.getAnnotationArray("filters", Filter.class);
 		assertThat(filters).isNotNull();
-		assertThat(filters.length).isEqualTo(1);
+		assertThat(filters).hasSize(1);
 		assertThat(filters[0].pattern()).isEqualTo("foo");
 	}
 
 	@Test
-	public void nestedAnnotations() throws Exception {
+	void nestedAnnotations() {
 		Filter filter = FilteredClass.class.getAnnotation(Filter.class);
 
 		attributes.put("filter", filter);
@@ -120,41 +130,41 @@ public class AnnotationAttributesTests {
 
 		Filter[] retrievedFilters = attributes.getAnnotationArray("filters", Filter.class);
 		assertThat(retrievedFilters).isNotNull();
-		assertThat(retrievedFilters.length).isEqualTo(2);
+		assertThat(retrievedFilters).hasSize(2);
 		assertThat(retrievedFilters[1].pattern()).isEqualTo("foo");
 	}
 
 	@Test
-	public void getEnumWithNullAttributeName() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				attributes.getEnum(null))
+	void getEnumWithNullAttributeName() {
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> attributes.getEnum(null))
 			.withMessageContaining("must not be null or empty");
 	}
 
 	@Test
-	public void getEnumWithEmptyAttributeName() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				attributes.getEnum(""))
+	void getEnumWithEmptyAttributeName() {
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> attributes.getEnum(""))
 			.withMessageContaining("must not be null or empty");
 	}
 
 	@Test
-	public void getEnumWithUnknownAttributeName() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				attributes.getEnum("bogus"))
+	void getEnumWithUnknownAttributeName() {
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> attributes.getEnum("bogus"))
 			.withMessageContaining("Attribute 'bogus' not found");
 	}
 
 	@Test
-	public void getEnumWithTypeMismatch() {
+	void getEnumWithTypeMismatch() {
 		attributes.put("color", "RED");
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				attributes.getEnum("color"))
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> attributes.getEnum("color"))
 			.withMessageContaining("Attribute 'color' is of type String, but Enum was expected");
 	}
 
 	@Test
-	public void getAliasedStringWithImplicitAliases() {
+	void getAliasedStringWithImplicitAliases() {
 		String value = "metaverse";
 		List<String> aliases = Arrays.asList("value", "location1", "location2", "location3", "xmlFile", "groovyScript");
 
@@ -178,7 +188,7 @@ public class AnnotationAttributesTests {
 	}
 
 	@Test
-	public void getAliasedStringArrayWithImplicitAliases() {
+	void getAliasedStringArrayWithImplicitAliases() {
 		String[] value = new String[] {"test.xml"};
 		List<String> aliases = Arrays.asList("value", "location1", "location2", "location3", "xmlFile", "groovyScript");
 

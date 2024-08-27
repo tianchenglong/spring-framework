@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ public class SingleColumnRowMapper<T> implements RowMapper<T> {
 	@Nullable
 	private ConversionService conversionService = DefaultConversionService.getSharedInstance();
 
+
 	/**
 	 * Create a new {@code SingleColumnRowMapper} for bean-style configuration.
 	 * @see #setRequiredType
@@ -62,12 +63,12 @@ public class SingleColumnRowMapper<T> implements RowMapper<T> {
 
 	/**
 	 * Create a new {@code SingleColumnRowMapper}.
-	 * <p>Consider using the {@link #newInstance} factory method instead,
-	 * which allows for specifying the required type once only.
 	 * @param requiredType the type that each result object is expected to match
 	 */
 	public SingleColumnRowMapper(Class<T> requiredType) {
-		setRequiredType(requiredType);
+		if (requiredType != Object.class) {
+			setRequiredType(requiredType);
+		}
 	}
 
 
@@ -195,9 +196,9 @@ public class SingleColumnRowMapper<T> implements RowMapper<T> {
 			return value.toString();
 		}
 		else if (Number.class.isAssignableFrom(requiredType)) {
-			if (value instanceof Number) {
+			if (value instanceof Number number) {
 				// Convert original Number to target Number class.
-				return NumberUtils.convertNumberToTargetClass(((Number) value), (Class<Number>) requiredType);
+				return NumberUtils.convertNumberToTargetClass(number, (Class<Number>) requiredType);
 			}
 			else {
 				// Convert stringified value to target Number class.
@@ -216,23 +217,27 @@ public class SingleColumnRowMapper<T> implements RowMapper<T> {
 
 
 	/**
-	 * Static factory method to create a new {@code SingleColumnRowMapper}
-	 * (with the required type specified only once).
+	 * Static factory method to create a new {@code SingleColumnRowMapper}.
 	 * @param requiredType the type that each result object is expected to match
 	 * @since 4.1
+	 * @see #newInstance(Class, ConversionService)
 	 */
 	public static <T> SingleColumnRowMapper<T> newInstance(Class<T> requiredType) {
 		return new SingleColumnRowMapper<>(requiredType);
 	}
 
 	/**
-	 * Static factory method to create a new {@code SingleColumnRowMapper}
-	 * (with the required type specified only once).
+	 * Static factory method to create a new {@code SingleColumnRowMapper}.
 	 * @param requiredType the type that each result object is expected to match
-	 * @param conversionService the {@link ConversionService} for converting a fetched value
+	 * @param conversionService the {@link ConversionService} for converting a
+	 * fetched value, or {@code null} for none
 	 * @since 5.0.4
+	 * @see #newInstance(Class)
+	 * @see #setConversionService
 	 */
-	public static <T> SingleColumnRowMapper<T> newInstance(Class<T> requiredType, @Nullable ConversionService conversionService) {
+	public static <T> SingleColumnRowMapper<T> newInstance(
+			Class<T> requiredType, @Nullable ConversionService conversionService) {
+
 		SingleColumnRowMapper<T> rowMapper = newInstance(requiredType);
 		rowMapper.setConversionService(conversionService);
 		return rowMapper;

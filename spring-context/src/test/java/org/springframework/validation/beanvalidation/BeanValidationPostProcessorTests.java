@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,19 @@
 
 package org.springframework.validation.beanvalidation;
 
-import javax.annotation.PostConstruct;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
-import org.junit.Test;
+import jakarta.annotation.PostConstruct;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.context.annotation.CommonAnnotationBeanPostProcessor;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncAnnotationAdvisor;
-import org.springframework.tests.sample.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -37,22 +36,23 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 /**
  * @author Juergen Hoeller
  */
-public class BeanValidationPostProcessorTests {
+class BeanValidationPostProcessorTests {
 
 	@Test
-	public void testNotNullConstraint() {
+	void testNotNullConstraint() {
 		GenericApplicationContext ac = new GenericApplicationContext();
 		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
 		ac.registerBeanDefinition("capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
 		ac.registerBeanDefinition("bean", new RootBeanDefinition(NotNullConstrainedBean.class));
-		assertThatExceptionOfType(BeanCreationException.class).isThrownBy(
-				ac::refresh)
-			.satisfies(ex -> assertThat(ex.getRootCause().getMessage()).contains("testBean").contains("invalid"));
+		assertThatExceptionOfType(BeanCreationException.class)
+			.isThrownBy(ac::refresh)
+			.havingRootCause()
+			.withMessageContainingAll("testBean", "invalid");
 		ac.close();
 	}
 
 	@Test
-	public void testNotNullConstraintSatisfied() {
+	void testNotNullConstraintSatisfied() {
 		GenericApplicationContext ac = new GenericApplicationContext();
 		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
 		ac.registerBeanDefinition("capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
@@ -64,7 +64,7 @@ public class BeanValidationPostProcessorTests {
 	}
 
 	@Test
-	public void testNotNullConstraintAfterInitialization() {
+	void testNotNullConstraintAfterInitialization() {
 		GenericApplicationContext ac = new GenericApplicationContext();
 		RootBeanDefinition bvpp = new RootBeanDefinition(BeanValidationPostProcessor.class);
 		bvpp.getPropertyValues().add("afterInitialization", true);
@@ -76,7 +76,7 @@ public class BeanValidationPostProcessorTests {
 	}
 
 	@Test
-	public void testNotNullConstraintAfterInitializationWithProxy() {
+	void testNotNullConstraintAfterInitializationWithProxy() {
 		GenericApplicationContext ac = new GenericApplicationContext();
 		RootBeanDefinition bvpp = new RootBeanDefinition(BeanValidationPostProcessor.class);
 		bvpp.getPropertyValues().add("afterInitialization", true);
@@ -90,21 +90,22 @@ public class BeanValidationPostProcessorTests {
 	}
 
 	@Test
-	public void testSizeConstraint() {
+	void testSizeConstraint() {
 		GenericApplicationContext ac = new GenericApplicationContext();
 		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
 		RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
 		bd.getPropertyValues().add("testBean", new TestBean());
 		bd.getPropertyValues().add("stringValue", "s");
 		ac.registerBeanDefinition("bean", bd);
-		assertThatExceptionOfType(BeanCreationException.class).isThrownBy(() ->
-				ac.refresh())
-			.satisfies(ex -> assertThat(ex.getRootCause().getMessage()).contains("stringValue").contains("invalid"));
+		assertThatExceptionOfType(BeanCreationException.class)
+			.isThrownBy(ac::refresh)
+			.havingRootCause()
+			.withMessageContainingAll("stringValue", "invalid");
 		ac.close();
 	}
 
 	@Test
-	public void testSizeConstraintSatisfied() {
+	void testSizeConstraintSatisfied() {
 		GenericApplicationContext ac = new GenericApplicationContext();
 		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
 		RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);

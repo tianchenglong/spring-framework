@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.web.socket.sockjs.transport.session;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.WebSocketHandler;
@@ -29,25 +29,20 @@ import static org.mockito.Mockito.mock;
  *
  * @author Rossen Stoyanchev
  */
-public abstract class AbstractSockJsSessionTests<S extends AbstractSockJsSession> {
+abstract class AbstractSockJsSessionTests<S extends AbstractSockJsSession> {
 
-	protected WebSocketHandler webSocketHandler;
+	protected WebSocketHandler webSocketHandler = mock();
 
-	protected StubSockJsServiceConfig sockJsConfig;
+	protected TaskScheduler taskScheduler = mock();
 
-	protected TaskScheduler taskScheduler;
+	protected StubSockJsServiceConfig sockJsConfig = new StubSockJsServiceConfig();
 
 	protected S session;
 
 
-	@Before
-	public void setUp() {
-		this.webSocketHandler = mock(WebSocketHandler.class);
-		this.taskScheduler = mock(TaskScheduler.class);
-
-		this.sockJsConfig = new StubSockJsServiceConfig();
+	@BeforeEach
+	protected void setUp() {
 		this.sockJsConfig.setTaskScheduler(this.taskScheduler);
-
 		this.session = initSockJsSession();
 	}
 

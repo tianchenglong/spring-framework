@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,12 @@ package org.springframework.transaction.annotation;
 import java.lang.management.ManagementFactory;
 import java.util.Collection;
 import java.util.Map;
+
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.support.AopUtils;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -31,9 +32,9 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.jmx.export.annotation.ManagedResource;
 import org.springframework.stereotype.Service;
-import org.springframework.tests.transaction.CallCountingTransactionManager;
 import org.springframework.transaction.config.TransactionManagementConfigUtils;
 import org.springframework.transaction.event.TransactionalEventListenerFactory;
+import org.springframework.transaction.testfixture.CallCountingTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -43,18 +44,18 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Juergen Hoeller
  * @author Sam Brannen
  */
-public class AnnotationTransactionNamespaceHandlerTests {
+class AnnotationTransactionNamespaceHandlerTests {
 
 	private final ConfigurableApplicationContext context = new ClassPathXmlApplicationContext(
 			"org/springframework/transaction/annotation/annotationTransactionNamespaceHandlerTests.xml");
 
-	@After
-	public void tearDown() {
+	@AfterEach
+	void tearDown() {
 		this.context.close();
 	}
 
 	@Test
-	public void isProxy() throws Exception {
+	void isProxy() {
 		TransactionalTestBean bean = getTestBean();
 		assertThat(AopUtils.isAopProxy(bean)).as("testBean is not a proxy").isTrue();
 		Map<String, Object> services = this.context.getBeansWithAnnotation(Service.class);
@@ -62,7 +63,7 @@ public class AnnotationTransactionNamespaceHandlerTests {
 	}
 
 	@Test
-	public void invokeTransactional() throws Exception {
+	void invokeTransactional() {
 		TransactionalTestBean testBean = getTestBean();
 		CallCountingTransactionManager ptm = (CallCountingTransactionManager) context.getBean("transactionManager");
 
@@ -86,7 +87,7 @@ public class AnnotationTransactionNamespaceHandlerTests {
 	}
 
 	@Test
-	public void nonPublicMethodsNotAdvised() {
+	void nonPublicMethodsNotAdvised() {
 		TransactionalTestBean testBean = getTestBean();
 		CallCountingTransactionManager ptm = (CallCountingTransactionManager) context.getBean("transactionManager");
 
@@ -96,17 +97,17 @@ public class AnnotationTransactionNamespaceHandlerTests {
 	}
 
 	@Test
-	public void mBeanExportAlsoWorks() throws Exception {
+	void mBeanExportAlsoWorks() throws Exception {
 		MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 		Object actual = server.invoke(ObjectName.getInstance("test:type=TestBean"), "doSomething", new Object[0], new String[0]);
 		assertThat(actual).isEqualTo("done");
 	}
 
 	@Test
-	public void transactionalEventListenerRegisteredProperly() {
+	void transactionalEventListenerRegisteredProperly() {
 		assertThat(this.context.containsBean(TransactionManagementConfigUtils
 				.TRANSACTIONAL_EVENT_LISTENER_FACTORY_BEAN_NAME)).isTrue();
-		assertThat(this.context.getBeansOfType(TransactionalEventListenerFactory.class).size()).isEqualTo(1);
+		assertThat(this.context.getBeansOfType(TransactionalEventListenerFactory.class)).hasSize(1);
 	}
 
 	private TransactionalTestBean getTestBean() {

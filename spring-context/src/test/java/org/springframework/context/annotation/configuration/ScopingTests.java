@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,22 +23,22 @@ import java.lang.annotation.Target;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.scope.ScopedObject;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.beans.testfixture.beans.ITestBean;
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.context.support.GenericApplicationContext;
-import org.springframework.tests.sample.beans.ITestBean;
-import org.springframework.tests.sample.beans.TestBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Costin Leau
  * @author Chris Beams
  */
-public class ScopingTests {
+class ScopingTests {
 
 	public static String flag = "1";
 
@@ -60,14 +60,14 @@ public class ScopingTests {
 	private GenericApplicationContext ctx;
 
 
-	@Before
-	public void setUp() throws Exception {
+	@BeforeEach
+	void setUp() {
 		customScope = new CustomScope();
 		ctx = createContext(ScopedConfigurationClass.class);
 	}
 
-	@After
-	public void tearDown() throws Exception {
+	@AfterEach
+	void tearDown() {
 		if (ctx != null) {
 			ctx.close();
 		}
@@ -86,16 +86,16 @@ public class ScopingTests {
 
 
 	@Test
-	public void testScopeOnClasses() throws Exception {
+	void testScopeOnClasses() {
 		genericTestScope("scopedClass");
 	}
 
 	@Test
-	public void testScopeOnInterfaces() throws Exception {
+	void testScopeOnInterfaces() {
 		genericTestScope("scopedInterface");
 	}
 
-	private void genericTestScope(String beanName) throws Exception {
+	private void genericTestScope(String beanName) {
 		String message = "scope is ignored";
 		Object bean1 = ctx.getBean(beanName);
 		Object bean2 = ctx.getBean(beanName);
@@ -130,7 +130,7 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testSameScopeOnDifferentBeans() throws Exception {
+	void testSameScopeOnDifferentBeans() {
 		Object beanAInScope = ctx.getBean("scopedClass");
 		Object beanBInScope = ctx.getBean("scopedInterface");
 
@@ -147,7 +147,7 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testRawScopes() throws Exception {
+	void testRawScopes() {
 		String beanName = "scopedProxyInterface";
 
 		// get hidden bean
@@ -158,7 +158,7 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testScopedProxyConfiguration() throws Exception {
+	void testScopedProxyConfiguration() {
 		TestBean singleton = (TestBean) ctx.getBean("singletonWithScopedInterfaceDep");
 		ITestBean spouse = singleton.getSpouse();
 		boolean condition = spouse instanceof ScopedObject;
@@ -191,7 +191,7 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testScopedProxyConfigurationWithClasses() throws Exception {
+	void testScopedProxyConfigurationWithClasses() {
 		TestBean singleton = (TestBean) ctx.getBean("singletonWithScopedClassDep");
 		ITestBean spouse = singleton.getSpouse();
 		boolean condition = spouse instanceof ScopedObject;

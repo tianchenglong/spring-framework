@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,41 +16,39 @@
 
 package org.springframework.cache.transaction;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.concurrent.ConcurrentMapCache;
-import org.springframework.tests.transaction.CallCountingTransactionManager;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.testfixture.CallCountingTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * @author Stephane Nicoll
+ * @author Juergen Hoeller
  */
-public class TransactionAwareCacheDecoratorTests {
+class TransactionAwareCacheDecoratorTests {
 
-	private final PlatformTransactionManager txManager = new CallCountingTransactionManager();
+	private final TransactionTemplate txTemplate = new TransactionTemplate(new CallCountingTransactionManager());
+
 
 	@Test
-	public void createWithNullTarget() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				new TransactionAwareCacheDecorator(null));
+	void createWithNullTarget() {
+		assertThatIllegalArgumentException().isThrownBy(() -> new TransactionAwareCacheDecorator(null));
 	}
 
 	@Test
-	public void getTargetCache() {
+	void getTargetCache() {
 		Cache target = new ConcurrentMapCache("testCache");
 		TransactionAwareCacheDecorator cache = new TransactionAwareCacheDecorator(target);
 		assertThat(cache.getTargetCache()).isSameAs(target);
 	}
 
 	@Test
-	public void regularOperationsOnTarget() {
+	void regularOperationsOnTarget() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 		assertThat(cache.getName()).isEqualTo(target.getName());
@@ -66,7 +64,7 @@ public class TransactionAwareCacheDecoratorTests {
 	}
 
 	@Test
-	public void putNonTransactional() {
+	void putNonTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 
@@ -76,23 +74,21 @@ public class TransactionAwareCacheDecoratorTests {
 	}
 
 	@Test
-	public void putTransactional() {
+	void putTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
-
-		TransactionStatus status = this.txManager.getTransaction(
-				new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED));
-
 		Object key = new Object();
-		cache.put(key, "123");
-		assertThat(target.get(key)).isNull();
-		this.txManager.commit(status);
+
+		txTemplate.executeWithoutResult(s -> {
+			cache.put(key, "123");
+			assertThat(target.get(key)).isNull();
+		});
 
 		assertThat(target.get(key, String.class)).isEqualTo("123");
 	}
 
 	@Test
-	public void putIfAbsent() { // no transactional support for putIfAbsent
+	void putIfAbsentNonTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 
@@ -105,7 +101,24 @@ public class TransactionAwareCacheDecoratorTests {
 	}
 
 	@Test
-	public void evictNonTransactional() {
+	void putIfAbsentTransactional() {  // no transactional support for putIfAbsent
+		Cache target = new ConcurrentMapCache("testCache");
+		Cache cache = new TransactionAwareCacheDecorator(target);
+		Object key = new Object();
+
+		txTemplate.executeWithoutResult(s -> {
+			assertThat(cache.putIfAbsent(key, "123")).isNull();
+			assertThat(target.get(key, String.class)).isEqualTo("123");
+			assertThat(cache.putIfAbsent(key, "456").get()).isEqualTo("123");
+			// unchanged
+			assertThat(target.get(key, String.class)).isEqualTo("123");
+		});
+
+		assertThat(target.get(key, String.class)).isEqualTo("123");
+	}
+
+	@Test
+	void evictNonTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 		Object key = new Object();
@@ -116,24 +129,48 @@ public class TransactionAwareCacheDecoratorTests {
 	}
 
 	@Test
-	public void evictTransactional() {
+	void evictTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 		Object key = new Object();
 		cache.put(key, "123");
 
-
-		TransactionStatus status = this.txManager.getTransaction(
-				new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED));
-		cache.evict(key);
-		assertThat(target.get(key, String.class)).isEqualTo("123");
-		this.txManager.commit(status);
+		txTemplate.executeWithoutResult(s -> {
+			cache.evict(key);
+			assertThat(target.get(key, String.class)).isEqualTo("123");
+		});
 
 		assertThat(target.get(key)).isNull();
 	}
 
 	@Test
-	public void clearNonTransactional() {
+	void evictIfPresentNonTransactional() {
+		Cache target = new ConcurrentMapCache("testCache");
+		Cache cache = new TransactionAwareCacheDecorator(target);
+		Object key = new Object();
+		cache.put(key, "123");
+
+		cache.evictIfPresent(key);
+		assertThat(target.get(key)).isNull();
+	}
+
+	@Test
+	void evictIfPresentTransactional() {  // no transactional support for evictIfPresent
+		Cache target = new ConcurrentMapCache("testCache");
+		Cache cache = new TransactionAwareCacheDecorator(target);
+		Object key = new Object();
+		cache.put(key, "123");
+
+		txTemplate.executeWithoutResult(s -> {
+			cache.evictIfPresent(key);
+			assertThat(target.get(key)).isNull();
+		});
+
+		assertThat(target.get(key)).isNull();
+	}
+
+	@Test
+	void clearNonTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 		Object key = new Object();
@@ -144,19 +181,44 @@ public class TransactionAwareCacheDecoratorTests {
 	}
 
 	@Test
-	public void clearTransactional() {
+	void clearTransactional() {
 		Cache target = new ConcurrentMapCache("testCache");
 		Cache cache = new TransactionAwareCacheDecorator(target);
 		Object key = new Object();
 		cache.put(key, "123");
 
-
-		TransactionStatus status = this.txManager.getTransaction(
-				new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED));
-		cache.clear();
-		assertThat(target.get(key, String.class)).isEqualTo("123");
-		this.txManager.commit(status);
+		txTemplate.executeWithoutResult(s -> {
+			cache.clear();
+			assertThat(target.get(key, String.class)).isEqualTo("123");
+		});
 
 		assertThat(target.get(key)).isNull();
 	}
+
+	@Test
+	void invalidateNonTransactional() {
+		Cache target = new ConcurrentMapCache("testCache");
+		Cache cache = new TransactionAwareCacheDecorator(target);
+		Object key = new Object();
+		cache.put(key, "123");
+
+		cache.invalidate();
+		assertThat(target.get(key)).isNull();
+	}
+
+	@Test
+	void invalidateTransactional() {  // no transactional support for invalidate
+		Cache target = new ConcurrentMapCache("testCache");
+		Cache cache = new TransactionAwareCacheDecorator(target);
+		Object key = new Object();
+		cache.put(key, "123");
+
+		txTemplate.executeWithoutResult(s -> {
+			cache.invalidate();
+			assertThat(target.get(key)).isNull();
+		});
+
+		assertThat(target.get(key)).isNull();
+	}
+
 }

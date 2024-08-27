@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@
 package org.springframework.aop.framework;
 
 import org.aopalliance.intercept.MethodInterceptor;
-import org.aopalliance.intercept.MethodInvocation;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.AopInvocationException;
 
@@ -30,14 +29,14 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  *
  * @author Dave Syer
  */
-public class NullPrimitiveTests {
+class NullPrimitiveTests {
 
-	static interface Foo {
+	interface Foo {
 		int getValue();
 	}
 
 	@Test
-	public void testNullPrimitiveWithJdkProxy() {
+	void testNullPrimitiveWithJdkProxy() {
 
 		class SimpleFoo implements Foo {
 			@Override
@@ -48,17 +47,11 @@ public class NullPrimitiveTests {
 
 		SimpleFoo target = new SimpleFoo();
 		ProxyFactory factory = new ProxyFactory(target);
-		factory.addAdvice(new MethodInterceptor() {
-			@Override
-			public Object invoke(MethodInvocation invocation) throws Throwable {
-				return null;
-			}
-		});
+		factory.addAdvice((MethodInterceptor) invocation -> null);
 
 		Foo foo = (Foo) factory.getProxy();
 
-		assertThatExceptionOfType(AopInvocationException.class).isThrownBy(() ->
-				foo.getValue())
+		assertThatExceptionOfType(AopInvocationException.class).isThrownBy(foo::getValue)
 			.withMessageContaining("Foo.getValue()");
 	}
 
@@ -69,21 +62,15 @@ public class NullPrimitiveTests {
 	}
 
 	@Test
-	public void testNullPrimitiveWithCglibProxy() {
+	void testNullPrimitiveWithCglibProxy() {
 
 		Bar target = new Bar();
 		ProxyFactory factory = new ProxyFactory(target);
-		factory.addAdvice(new MethodInterceptor() {
-			@Override
-			public Object invoke(MethodInvocation invocation) throws Throwable {
-				return null;
-			}
-		});
+		factory.addAdvice((MethodInterceptor) invocation -> null);
 
 		Bar bar = (Bar) factory.getProxy();
 
-		assertThatExceptionOfType(AopInvocationException.class).isThrownBy(() ->
-				bar.getValue())
+		assertThatExceptionOfType(AopInvocationException.class).isThrownBy(bar::getValue)
 			.withMessageContaining("Bar.getValue()");
 	}
 

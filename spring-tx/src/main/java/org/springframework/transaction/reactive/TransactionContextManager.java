@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,23 +46,21 @@ public abstract class TransactionContextManager {
 	 * transactional context holder. Context retrieval fails with NoTransactionException
 	 * if no context or context holder is registered.
 	 * @return the current {@link TransactionContext}
-	 * @throws NoTransactionException if no TransactionContext was found in the subscriber context
-	 * or no context found in a holder
+	 * @throws NoTransactionException if no TransactionContext was found in the
+	 * subscriber context or no context found in a holder
 	 */
-	public static Mono<TransactionContext> currentContext() throws NoTransactionException {
-		return Mono.subscriberContext().handle((ctx, sink) -> {
+	public static Mono<TransactionContext> currentContext() {
+		return Mono.deferContextual(ctx -> {
 			if (ctx.hasKey(TransactionContext.class)) {
-				sink.next(ctx.get(TransactionContext.class));
-				return;
+				return Mono.just(ctx.get(TransactionContext.class));
 			}
 			if (ctx.hasKey(TransactionContextHolder.class)) {
 				TransactionContextHolder holder = ctx.get(TransactionContextHolder.class);
 				if (holder.hasContext()) {
-					sink.next(holder.currentContext());
-					return;
+					return Mono.just(holder.currentContext());
 				}
 			}
-			sink.error(new NoTransactionException("No transaction in context"));
+			return Mono.error(new NoTransactionInContextException());
 		});
 	}
 
@@ -70,8 +68,8 @@ public abstract class TransactionContextManager {
 	 * Create a {@link TransactionContext} and register it in the subscriber {@link Context}.
 	 * @return functional context registration.
 	 * @throws IllegalStateException if a transaction context is already associated.
-	 * @see Mono#subscriberContext(Function)
-	 * @see Flux#subscriberContext(Function)
+	 * @see Mono#contextWrite(Function)
+	 * @see Flux#contextWrite(Function)
 	 */
 	public static Function<Context, Context> createTransactionContext() {
 		return context -> context.put(TransactionContext.class, new TransactionContext());
@@ -109,6 +107,24 @@ public abstract class TransactionContextManager {
 			}
 			return context;
 		};
+	}
+
+
+	/**
+	 * Stackless variant of {@link NoTransactionException} for reactive flows.
+	 */
+	@SuppressWarnings("serial")
+	private static class NoTransactionInContextException extends NoTransactionException {
+
+		public NoTransactionInContextException() {
+			super("No transaction in context");
+		}
+
+		@Override
+		public synchronized Throwable fillInStackTrace() {
+			// stackless exception
+			return this;
+		}
 	}
 
 }

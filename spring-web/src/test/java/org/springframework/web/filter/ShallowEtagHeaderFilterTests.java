@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,133 +16,143 @@
 
 package org.springframework.web.filter;
 
-import javax.servlet.FilterChain;
-import javax.servlet.http.HttpServletResponse;
+import java.io.InputStream;
 
-import org.junit.Test;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.Test;
 
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.mock.web.test.MockHttpServletResponse;
 import org.springframework.util.FileCopyUtils;
-import org.springframework.util.StreamUtils;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
+import org.springframework.web.testfixture.servlet.MockHttpServletResponse;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import static org.springframework.http.MediaType.TEXT_PLAIN_VALUE;
 
 /**
+ * Tests for {@link ShallowEtagHeaderFilter}.
+ *
  * @author Arjen Poutsma
  * @author Brian Clozel
  * @author Juergen Hoeller
+ * @author Sam Brannen
  */
-public class ShallowEtagHeaderFilterTests {
+class ShallowEtagHeaderFilterTests {
 
 	private final ShallowEtagHeaderFilter filter = new ShallowEtagHeaderFilter();
 
 
 	@Test
-	public void isEligibleForEtag() {
+	void isEligibleForEtag() {
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		assertThat(filter.isEligibleForEtag(request, response, 200, StreamUtils.emptyInput())).isTrue();
-		assertThat(filter.isEligibleForEtag(request, response, 300, StreamUtils.emptyInput())).isFalse();
+		assertThat(filter.isEligibleForEtag(request, response, 200, InputStream.nullInputStream())).isTrue();
+		assertThat(filter.isEligibleForEtag(request, response, 300, InputStream.nullInputStream())).isFalse();
 
 		request = new MockHttpServletRequest("HEAD", "/hotels");
-		assertThat(filter.isEligibleForEtag(request, response, 200, StreamUtils.emptyInput())).isFalse();
+		assertThat(filter.isEligibleForEtag(request, response, 200, InputStream.nullInputStream())).isFalse();
 
 		request = new MockHttpServletRequest("POST", "/hotels");
-		assertThat(filter.isEligibleForEtag(request, response, 200, StreamUtils.emptyInput())).isFalse();
+		assertThat(filter.isEligibleForEtag(request, response, 200, InputStream.nullInputStream())).isFalse();
 
 		request = new MockHttpServletRequest("POST", "/hotels");
 		request.addHeader("Cache-Control","must-revalidate, no-store");
-		assertThat(filter.isEligibleForEtag(request, response, 200, StreamUtils.emptyInput())).isFalse();
+		assertThat(filter.isEligibleForEtag(request, response, 200, InputStream.nullInputStream())).isFalse();
 	}
 
 	@Test
-	public void filterNoMatch() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterNoMatch() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			((HttpServletResponse) filterResponse).setStatus(HttpServletResponse.SC_OK);
+			filterResponse.setContentType(TEXT_PLAIN_VALUE);
 			FileCopyUtils.copy(responseBody, filterResponse.getOutputStream());
 		};
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(200);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
-		assertThat(response.getContentLength() > 0).as("Invalid Content-Length header").isTrue();
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
+		assertThat(response.getContentLength()).as("Invalid Content-Length header").isGreaterThan(0);
+		assertThat(response.getContentType()).as("Invalid Content-Type header").isEqualTo(TEXT_PLAIN_VALUE);
 		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(responseBody);
 	}
 
 	@Test
-	public void filterNoMatchWeakETag() throws Exception {
+	void filterNoMatchWeakETag() throws Exception {
 		this.filter.setWriteWeakETag(true);
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			((HttpServletResponse) filterResponse).setStatus(HttpServletResponse.SC_OK);
+			filterResponse.setContentType(TEXT_PLAIN_VALUE);
 			FileCopyUtils.copy(responseBody, filterResponse.getOutputStream());
 		};
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(200);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isEqualTo("W/\"0b10a8db164e0754105b7a99be72e3fe5\"");
-		assertThat(response.getContentLength() > 0).as("Invalid Content-Length header").isTrue();
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isEqualTo("W/\"0b10a8db164e0754105b7a99be72e3fe5\"");
+		assertThat(response.getContentLength()).as("Invalid Content-Length header").isGreaterThan(0);
+		assertThat(response.getContentType()).as("Invalid Content-Type header").isEqualTo(TEXT_PLAIN_VALUE);
 		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(responseBody);
 	}
 
 	@Test
-	public void filterMatch() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterMatch() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		String etag = "\"0b10a8db164e0754105b7a99be72e3fe5\"";
 		request.addHeader("If-None-Match", etag);
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
-			byte[] responseBody = "Hello World".getBytes("UTF-8");
-			FileCopyUtils.copy(responseBody, filterResponse.getOutputStream());
+			byte[] responseBody = "Hello World".getBytes(UTF_8);
 			filterResponse.setContentLength(responseBody.length);
+			filterResponse.setContentType(TEXT_PLAIN_VALUE);
+			FileCopyUtils.copy(responseBody, filterResponse.getOutputStream());
 		};
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(304);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
 		assertThat(response.containsHeader("Content-Length")).as("Response has Content-Length header").isFalse();
-		byte[] expecteds = new byte[0];
-		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(expecteds);
+		assertThat(response.getContentType()).as("Invalid Content-Type header").isEqualTo(TEXT_PLAIN_VALUE);
+		assertThat(response.getContentAsByteArray()).as("Invalid content").isEmpty();
 	}
 
 	@Test
-	public void filterMatchWeakEtag() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterMatchWeakEtag() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		String etag = "\"0b10a8db164e0754105b7a99be72e3fe5\"";
 		request.addHeader("If-None-Match", "W/" + etag);
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
-			byte[] responseBody = "Hello World".getBytes("UTF-8");
+			byte[] responseBody = "Hello World".getBytes(UTF_8);
 			FileCopyUtils.copy(responseBody, filterResponse.getOutputStream());
 			filterResponse.setContentLength(responseBody.length);
 		};
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(304);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
 		assertThat(response.containsHeader("Content-Length")).as("Response has Content-Length header").isFalse();
-		byte[] expecteds = new byte[0];
-		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(expecteds);
+		assertThat(response.getContentAsByteArray()).as("Invalid content").isEmpty();
 	}
 
 	@Test
-	public void filterWriter() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterWriter() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		String etag = "\"0b10a8db164e0754105b7a99be72e3fe5\"";
 		request.addHeader("If-None-Match", etag);
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -156,21 +166,22 @@ public class ShallowEtagHeaderFilterTests {
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(304);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
 		assertThat(response.containsHeader("Content-Length")).as("Response has Content-Length header").isFalse();
-		byte[] expecteds = new byte[0];
-		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(expecteds);
+		assertThat(response.getContentAsByteArray()).as("Invalid content").isEmpty();
 	}
 
 	@Test  // SPR-12960
 	public void filterWriterWithDisabledCaching() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
+		response.setContentType(TEXT_PLAIN_VALUE);
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			((HttpServletResponse) filterResponse).setStatus(HttpServletResponse.SC_OK);
+			filterResponse.setContentType(APPLICATION_JSON_VALUE);
 			FileCopyUtils.copy(responseBody, filterResponse.getOutputStream());
 		};
 
@@ -179,15 +190,16 @@ public class ShallowEtagHeaderFilterTests {
 
 		assertThat(response.getStatus()).isEqualTo(200);
 		assertThat(response.getHeader("ETag")).isNull();
+		assertThat(response.getContentType()).as("Invalid Content-Type header").isEqualTo(APPLICATION_JSON_VALUE);
 		assertThat(response.getContentAsByteArray()).isEqualTo(responseBody);
 	}
 
 	@Test
-	public void filterSendError() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterSendError() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			response.setContentLength(100);
@@ -197,17 +209,17 @@ public class ShallowEtagHeaderFilterTests {
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(403);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isNull();
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isNull();
 		assertThat(response.getContentLength()).as("Invalid Content-Length header").isEqualTo(100);
 		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(responseBody);
 	}
 
 	@Test
-	public void filterSendErrorMessage() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterSendErrorMessage() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			response.setContentLength(100);
@@ -217,18 +229,18 @@ public class ShallowEtagHeaderFilterTests {
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(403);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isNull();
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isNull();
 		assertThat(response.getContentLength()).as("Invalid Content-Length header").isEqualTo(100);
 		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(responseBody);
 		assertThat(response.getErrorMessage()).as("Invalid error message").isEqualTo("ERROR");
 	}
 
 	@Test
-	public void filterSendRedirect() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+	void filterSendRedirect() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			response.setContentLength(100);
@@ -238,19 +250,18 @@ public class ShallowEtagHeaderFilterTests {
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(302);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isNull();
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isNull();
 		assertThat(response.getContentLength()).as("Invalid Content-Length header").isEqualTo(100);
 		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(responseBody);
 		assertThat(response.getRedirectedUrl()).as("Invalid redirect URL").isEqualTo("https://www.google.com");
 	}
 
-	// SPR-13717
-	@Test
+	@Test // SPR-13717
 	public void filterFlushResponse() throws Exception {
-		final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final byte[] responseBody = "Hello World".getBytes("UTF-8");
+		byte[] responseBody = "Hello World".getBytes(UTF_8);
 		FilterChain filterChain = (filterRequest, filterResponse) -> {
 			assertThat(filterRequest).as("Invalid request passed").isEqualTo(request);
 			((HttpServletResponse) filterResponse).setStatus(HttpServletResponse.SC_OK);
@@ -260,8 +271,8 @@ public class ShallowEtagHeaderFilterTests {
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(response.getStatus()).as("Invalid status").isEqualTo(200);
-		assertThat(response.getHeader("ETag")).as("Invalid ETag header").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
-		assertThat(response.getContentLength() > 0).as("Invalid Content-Length header").isTrue();
+		assertThat(response.getHeader("ETag")).as("Invalid ETag").isEqualTo("\"0b10a8db164e0754105b7a99be72e3fe5\"");
+		assertThat(response.getContentLength()).as("Invalid Content-Length header").isGreaterThan(0);
 		assertThat(response.getContentAsByteArray()).as("Invalid content").isEqualTo(responseBody);
 	}
 

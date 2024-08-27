@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 import org.springframework.cache.interceptor.CacheOperationInvoker;
+import org.springframework.lang.Nullable;
 
 /**
  * Intercept methods annotated with {@link CacheRemoveAll}.
@@ -38,11 +39,11 @@ class CacheRemoveAllInterceptor extends AbstractCacheInterceptor<CacheRemoveAllO
 
 
 	@Override
+	@Nullable
 	protected Object invoke(
 			CacheOperationInvocationContext<CacheRemoveAllOperation> context, CacheOperationInvoker invoker) {
 
 		CacheRemoveAllOperation operation = context.getOperation();
-
 		boolean earlyRemove = operation.isEarlyRemove();
 		if (earlyRemove) {
 			removeAll(context);
@@ -67,10 +68,10 @@ class CacheRemoveAllInterceptor extends AbstractCacheInterceptor<CacheRemoveAllO
 	protected void removeAll(CacheOperationInvocationContext<CacheRemoveAllOperation> context) {
 		Cache cache = resolveCache(context);
 		if (logger.isTraceEnabled()) {
-			logger.trace("Invalidating entire cache '" + cache.getName() + "' for operation "
-					+ context.getOperation());
+			logger.trace("Invalidating entire cache '" + cache.getName() + "' for operation " +
+					context.getOperation());
 		}
-		doClear(cache);
+		doClear(cache, context.getOperation().isEarlyRemove());
 	}
 
 }
